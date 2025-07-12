@@ -52,20 +52,20 @@ const Navbar = () => {
   return (
     <header className="fixed top-0 w-full z-50">
       <div className="w-full px-4 pt-15">
-        <nav className={`backdrop-blur-md rounded-3xl mx-auto max-w-7xl shadow-2xl border transition-all ${
+        <nav className={`backdrop-blur-md rounded-3xl mx-auto max-w-7xl shadow-lg border transition-all ${
           isScrolled 
-            ? "bg-black/50 border-gray-800/50 w-55 hover:w-full overflow-hidden duration-600 ease-out" 
-            : "bg-black/20 border-transparent duration-500 ease-in-out"
+            ? "bg-deep-sky/80 border-muted-slate/30 w-55 hover:w-full overflow-hidden duration-600 ease-out" 
+            : "bg-deep-sky/30 border-transparent duration-500 ease-in-out"
         }`}>
           <div className="px-6 lg:px-8">
             <div className="flex items-center justify-between h-16 group">
-              {/*logo and name (or only the logo)*/}
+              {/*logo and name*/}
               <Link href="/" className="flex items-center space-x-2 min-w-max">
                 <div className="relative">
-                  <GraduationCap className="h-7 w-7 text-sunset-copper/90 animate-pulse" />
-                  <div className="absolute inset-0 h-7 w-7 bg-blue-400/20 rounded-full blur-sm"></div>
+                  <GraduationCap className="h-7 w-7 text-muted-cyan animate-pulse" />
+                  <div className="absolute inset-0 h-7 w-7 bg-muted-cyan/20 rounded-full blur-sm"></div>
                 </div>
-                <span className="text-white text-xl font-bold tracking-tight transition-all duration-300">
+                <span className="text-clean-white text-xl font-bold tracking-tight transition-all duration-300">
                   Scholar Sync
                 </span>
               </Link>
@@ -79,10 +79,10 @@ const Navbar = () => {
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-gray-800/30 rounded-lg ${
+                      className={`px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-action-blue/30 rounded-lg ${
                         pathname === item.href
-                          ? "text-white bg-gray-800/50"
-                          : "text-gray-300 hover:text-white"
+                          ? "text-clean-white bg-action-blue/50"
+                          : "text-muted-slate hover:text-clean-white"
                       }`}
                     >
                       {item.name}
@@ -95,13 +95,13 @@ const Navbar = () => {
               <div className={`hidden md:flex items-center space-x-4 transition-all duration-300 ${
                 isScrolled ? "opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0" : "opacity-100"
               }`}>
-                {/*search (පස්සෙ මේක උඩට ගන්න පොඩි අදහසක් තියෙනව)*/}
+                {/*search*/}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-slate" />
                   <Input
                     type="search"
                     placeholder="Search courses..."
-                    className="pl-10 w-64 bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-400"
+                    className="pl-10 w-64 bg-deep-sky/50 border-muted-slate/30 text-clean-white placeholder:text-muted-slate"
                   />
                 </div>
 
@@ -112,31 +112,31 @@ const Navbar = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+                        className="text-muted-slate hover:text-clean-white hover:bg-action-blue/30"
                       >
                         <User className="h-4 w-4 mr-2" />
                         {user.name}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-gray-900 border-gray-800">
-                      <DropdownMenuItem asChild className="text-gray-300 hover:bg-gray-800">
+                    <DropdownMenuContent align="end" className="w-56 bg-deep-sky border-muted-slate/30">
+                      <DropdownMenuItem asChild className="text-muted-slate hover:bg-action-blue/30">
                         <Link href="/profile">Profile</Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild className="text-gray-300 hover:bg-gray-800">
+                      <DropdownMenuItem asChild className="text-muted-slate hover:bg-action-blue/30">
                         <Link href="/bookings">My Bookings</Link>
                       </DropdownMenuItem>
                       {user.role === "admin" && (
                         <>
-                          <DropdownMenuSeparator className="bg-gray-800" />
-                          <DropdownMenuItem asChild className="text-gray-300 hover:bg-gray-800">
+                          <DropdownMenuSeparator className="bg-muted-slate/30" />
+                          <DropdownMenuItem asChild className="text-muted-slate hover:bg-action-blue/30">
                             <Link href="/admin">Admin Dashboard</Link>
                           </DropdownMenuItem>
                         </>
                       )}
-                      <DropdownMenuSeparator className="bg-gray-800" />
+                      <DropdownMenuSeparator className="bg-muted-slate/30" />
                       <DropdownMenuItem 
                         onClick={handleLogout}
-                        className="text-gray-300 hover:bg-gray-800"
+                        className="text-muted-slate hover:bg-action-blue/30"
                       >
                         Logout
                       </DropdownMenuItem>
@@ -148,14 +148,14 @@ const Navbar = () => {
                       variant="ghost"
                       size="sm"
                       asChild
-                      className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+                      className="text-muted-slate hover:text-clean-white hover:bg-action-blue/30"
                     >
                       <Link href="/auth/login">Login</Link>
                     </Button>
                     <Button 
                       size="sm" 
                       asChild 
-                      className="bg-gradient-to-r from-champagne-gold via-champagne-gold/90 to-champagne-gold hover:from-button-accent-hover/95 hover:via-button-accent-hover hover:to-button-accent-hover/95 text-rich-graphite font-bold px-6 py-2 rounded-full transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-sunset-copper/30 border-0"
+                      className="bg-gradient-to-b from-action-blue via-blue-600 to-blue-hover hover:from-muted-cyan/95 hover:via-action-blue/95 hover:to-blue-hover/95 text-ocean-base/95 font-bold px-6 py-2 rounded-full transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-muted-cyan/30 border-0"
                     >
                       <Link href="/auth/register">Sign Up</Link>
                     </Button>
@@ -170,20 +170,20 @@ const Navbar = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg"
+                      className="text-muted-slate hover:text-clean-white hover:bg-action-blue/30 rounded-lg"
                     >
                       {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                       <span className="sr-only">Open menu</span>
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="right" className="bg-black/50 backdrop-blur-md border-gray-800 rounded-l-2xl">
+                  <SheetContent side="right" className="bg-deep-sky/80 backdrop-blur-md border-muted-slate/30 rounded-l-2xl">
                     <div className="flex items-center justify-between mb-8">
                       <div className="flex items-center space-x-2">
                         <div className="relative">
-                          <GraduationCap className="h-6 w-6 text-blue-400" />
-                          <div className="absolute inset-0 h-6 w-6 bg-blue-400/20 rounded-full blur-sm"></div>
+                          <GraduationCap className="h-6 w-6 text-muted-cyan" />
+                          <div className="absolute inset-0 h-6 w-6 bg-muted-cyan/20 rounded-full blur-sm"></div>
                         </div>
-                        <span className="text-white text-lg font-bold">
+                        <span className="text-clean-white text-lg font-bold">
                           Scholar Sync
                         </span>
                       </div>
@@ -191,7 +191,7 @@ const Navbar = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => setIsOpen(false)}
-                        className="text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg"
+                        className="text-muted-slate hover:text-clean-white hover:bg-action-blue/30 rounded-lg"
                       >
                         <X className="h-6 w-6" />
                       </Button>
@@ -205,8 +205,8 @@ const Navbar = () => {
                           onClick={() => setIsOpen(false)}
                           className={`px-4 py-3 text-base font-medium transition-colors duration-200 rounded-lg ${
                             pathname === item.href
-                              ? "text-white bg-gray-800/50"
-                              : "text-gray-300 hover:text-white hover:bg-gray-800/50"
+                              ? "text-clean-white bg-action-blue/50"
+                              : "text-muted-slate hover:text-clean-white hover:bg-action-blue/30"
                           }`}
                         >
                           {item.name}
@@ -217,25 +217,25 @@ const Navbar = () => {
                         {user ? (
                           <div className="space-y-4">
                             <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-blue-100/10 rounded-full flex items-center justify-center">
-                                <User className="h-5 w-5 text-blue-400" />
+                              <div className="w-10 h-10 bg-muted-cyan/10 rounded-full flex items-center justify-center">
+                                <User className="h-5 w-5 text-muted-cyan" />
                               </div>
                               <div>
-                                <p className="font-medium text-white">{user.name}</p>
-                                <p className="text-sm text-gray-400">{user.email}</p>
+                                <p className="font-medium text-clean-white">{user.name}</p>
+                                <p className="text-sm text-muted-slate">{user.email}</p>
                               </div>
                             </div>
                             <div className="space-y-2">
                               <Button 
                                 variant="outline" 
-                                className="w-full justify-start bg-transparent text-gray-300 border-gray-700 hover:bg-gray-800/50 hover:text-white" 
+                                className="w-full justify-start bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white" 
                                 asChild
                               >
                                 <Link href="/profile" onClick={() => setIsOpen(false)}>Profile</Link>
                               </Button>
                               <Button 
                                 variant="outline" 
-                                className="w-full justify-start bg-transparent text-gray-300 border-gray-700 hover:bg-gray-800/50 hover:text-white" 
+                                className="w-full justify-start bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white" 
                                 asChild
                               >
                                 <Link href="/bookings" onClick={() => setIsOpen(false)}>My Bookings</Link>
@@ -243,7 +243,7 @@ const Navbar = () => {
                               {user.role === "admin" && (
                                 <Button 
                                   variant="outline" 
-                                  className="w-full justify-start bg-transparent text-gray-300 border-gray-700 hover:bg-gray-800/50 hover:text-white" 
+                                  className="w-full justify-start bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white" 
                                   asChild
                                 >
                                   <Link href="/admin" onClick={() => setIsOpen(false)}>Admin Dashboard</Link>
@@ -251,7 +251,7 @@ const Navbar = () => {
                               )}
                               <Button
                                 variant="outline"
-                                className="w-full justify-start bg-transparent text-gray-300 border-gray-700 hover:bg-gray-800/50 hover:text-white"
+                                className="w-full justify-start bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white"
                                 onClick={() => {
                                   handleLogout()
                                   setIsOpen(false)
@@ -265,13 +265,13 @@ const Navbar = () => {
                           <div className="space-y-3">
                             <Button 
                               variant="outline" 
-                              className="w-full bg-transparent text-gray-300 border-gray-700 hover:bg-gray-800/50 hover:text-white" 
+                              className="w-full bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white" 
                               asChild
                             >
                               <Link href="/auth/login" onClick={() => setIsOpen(false)}>Login</Link>
                             </Button>
                             <Button 
-                              className="w-full bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 hover:from-blue-500 hover:via-blue-600 hover:to-indigo-600 text-white font-bold py-3 rounded-full transition-all duration-200 shadow-lg"
+                              className="w-full bg-gradient-to-r from-muted-cyan via-action-blue to-blue-hover hover:from-muted-cyan/95 hover:via-action-blue/95 hover:to-blue-hover/95 text-deep-navy font-bold py-3 rounded-full transition-all duration-200 shadow-lg"
                               asChild
                             >
                               <Link href="/auth/register" onClick={() => setIsOpen(false)}>Sign Up</Link>
