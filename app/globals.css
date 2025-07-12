@@ -6,35 +6,29 @@
 
 @theme {
     /* Base and backgrounds */
-    --color-pure-porcelain: #FAFAFA;             /* main background – ultra-clean, premium */
-    --color-soft-linen: #F3F0EB;                 /* subtle warm-neutral background – modern, inviting */
-    --color-smoky-pearl: #E9E7E3;                /* cards background – soft separation */
-    --color-onyx-black: #121212;                 /* deepest dark – hero sections, footers */
-    --color-absolute-white: #FFFFFF;             /* highest contrast – key content */
+    --color-ocean-base: #EAF3FB;             /* primary background - soft blueish white */
+    --color-sky-shell: #F5F9FC;              /* secondary background - even lighter, airy feel */
+    --color-deep-sky: #1B3A57;               /* deep background - grounded and rich blue */
+    --color-midnight-blue: #13293D;          /* dark base - smooth professional tone */
+    --color-blue-black: #0A1A2F;             /* ultra-dark tone - elegant depth */
 
     /* Accents and highlights */
-    --color-deep-sapphire: #173D7A;              /* primary accent – academic, rich, serious */
-    --color-royal-amethyst: #6E3B8E;             /* secondary accent – luxurious, creative */
-    --color-champagne-gold: #D8B36A;             /* luxe highlight – premium pricing/details */
-    --color-sunset-copper: #B56239;              /* accent – event call-outs / creative highlights */
+    --color-soft-ice: #F0F6FA;               /* subtle contrast background - clean and modern */
+    --color-muted-cyan: #A9CDE8;             /* soft accent - uplifting yet calm */
+    --color-sky-gray: #6A8CA3;               /* calm contrast - for icons, secondary accents */
 
     /* Texts */
-    --color-rich-graphite: #202124;              /* main text – high readability, modern luxe */
-    --color-muted-ash: #5F6368;                  /* secondary text – elegant, subtle gray */
-    --color-highlight-gold: #D8B36A;             /* pricing, links, emphasis */
+    --color-clean-white: #FFFFFF;            /* main text on dark backgrounds */
+    --color-deep-navy: #14202E;              /* main text on light backgrounds */
+    --color-muted-slate: #8CA0B3;            /* secondary text - readable and calm */
 
     /* CTA / buttons */
-    --color-button-primary-bg: #173D7A;          /* deep sapphire – strong, trustworthy */
-    --color-button-primary-hover: #112F5C;       /* darker sapphire – hover state */
-    --color-button-secondary-bg: #6E3B8E;        /* royal amethyst – creative, premium */
-    --color-button-secondary-hover: #592F73;     /* deeper amethyst – hover state */
-    --color-button-accent-bg: #D8B36A;           /* champagne gold – luxury CTA */
-    --color-button-accent-hover: #C49E55;        /* deeper gold – hover */
+    --color-action-blue: #2D7DD2;            /* button base - bold blue for strong CTAs */
+    --color-blue-hover: #1C5FA8;             /* button hover - darker blue for interaction */
 
     /* Effects */
-    --color-glass-overlay: rgba(255, 255, 255, 0.05);     /* glassmorphism overlay – subtle on dark */
-    --color-border-hint: rgba(0, 0, 0, 0.08);              /* elegant borders for cards and sections */
-    --color-gradient-sapphire-amethyst: linear-gradient(135deg, #173D7A 0%, #6E3B8E 100%);  /* luxury CTA gradient */
+    --color-glass-overlay: rgba(255, 255, 255, 0.06);  /* card overlay effect */
+    --color-border-hint: rgba(0, 0, 0, 0.08);          /* subtle borders / outlines */
 }
 
 

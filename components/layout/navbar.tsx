@@ -62,7 +62,7 @@ const Navbar = () => {
               {/*logo and name (or only the logo)*/}
               <Link href="/" className="flex items-center space-x-2 min-w-max">
                 <div className="relative">
-                  <GraduationCap className="h-7 w-7 text-sunset-copper/90" />
+                  <GraduationCap className="h-7 w-7 text-sunset-copper/90 animate-pulse" />
                   <div className="absolute inset-0 h-7 w-7 bg-blue-400/20 rounded-full blur-sm"></div>
                 </div>
                 <span className="text-white text-xl font-bold tracking-tight transition-all duration-300">
