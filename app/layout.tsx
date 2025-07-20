@@ -1,8 +1,7 @@
+// app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Navbar from "@/components/layout/navbar";
-import Footer from "@/components/layout/footer";
+import { Geist, Geist_Mono } from "next/font/google"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,18 +18,16 @@ export const metadata: Metadata = {
   description: "Premium Course Sales and Event Booking Platform",
 };
 
-export default function RootLayout({ children, }: Readonly<{ children: React.ReactNode; }>) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-soft-linen`}
-      >
-        <div className="flex min-h-screen flex-col">
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </div>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-soft-linen`}>
+        {children}
       </body>
     </html>
   );
-}
+};
