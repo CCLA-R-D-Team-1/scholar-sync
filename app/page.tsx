@@ -26,7 +26,7 @@ export default function HomePage() {
       {/*hero section*/}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-midnight-blue">
         {/*gradient overlay*/}
-        <div className="absolute inset-0 bg-gradient-to-br from-deep-sky/30 via-action-blue/40 to-blue-black">
+        <div className="absolute inset-0 bg-gradient-to-br from-deep-sky/30 via-action-blue/60 to-blue-black">
           <div className="absolute inset-0 bg-glass-overlay" />
         </div>
 
@@ -112,7 +112,7 @@ export default function HomePage() {
       </section>
 
       {/*section - features*/}
-      <section className="py-20 bg-sky-shell">
+      <section className="py-20 bg-gradient-to-b from-sky-shell via-sky-shell to-ocean-base">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <Badge variant="outline" className="mb-4 border-deep-sky text-deep-sky">
