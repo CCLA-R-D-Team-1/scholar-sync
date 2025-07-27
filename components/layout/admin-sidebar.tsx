@@ -16,6 +16,7 @@ import {
   BarChart3,
   FileText,
   Bell,
+  Home,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -73,6 +74,19 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
       </div>
+
+      {/* Back Button */}
+      <Link
+        href="/"
+        className={cn(
+          "flex items-center space-x-3 px-3 py-2 mx-4 mt-4 rounded-lg text-sm font-medium transition-colors text-gray-300 hover:text-white hover:bg-gray-800",
+          collapsed && "justify-center",
+        )}
+        title={collapsed ? "Home" : undefined}
+      >
+        <Home className="h-5 w-5 flex-shrink-0" />
+        {!collapsed && <span>Back to Home</span>}
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
