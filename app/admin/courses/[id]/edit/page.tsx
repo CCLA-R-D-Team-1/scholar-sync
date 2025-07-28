@@ -1,4 +1,4 @@
-"use client"
+// "use client"
 
 import type React from "react"
 
@@ -23,6 +23,7 @@ interface EditCoursePageProps {
 }
 
 const EditCoursePage = async ({ params }: EditCoursePageProps) => {
+  const { id } = params
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [course, setCourse] = useState<Course | null>(null)
@@ -137,7 +138,7 @@ const EditCoursePage = async ({ params }: EditCoursePageProps) => {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Edit Course</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Edit Course: {id}</h1>
           <p className="text-gray-600 mt-1">Update course information</p>
         </div>
       </div>
