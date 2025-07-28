@@ -470,7 +470,7 @@ export default function NewEventPage() {
                   />
                   <Label htmlFor="isActive">Active Event</Label>
                 </div>
-                <p className="text-sm text-gray-500">Inactive events won't be visible to users</p>
+                <p className="text-sm text-gray-500"> {`Inactive events won't be visible to users`}</p>
 
                 <div className="flex items-center space-x-2">
                   <Switch

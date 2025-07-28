@@ -309,8 +309,8 @@ export default function HomePage() {
                   ))}
                 </div>
                 <p className="text-muted-slate mb-6 leading-relaxed">
-                  "The data science program gave me the skills I needed to transition into AI. The hands-on projects
-                  were incredibly valuable."
+                  {`"The data science program gave me the skills I needed to transition into AI. The hands-on projects
+                  were incredibly valuable."`}
                 </p>
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-action-blue/10 rounded-full flex items-center justify-center mr-4">
@@ -332,8 +332,8 @@ export default function HomePage() {
                   ))}
                 </div>
                 <p className="text-muted-slate mb-6 leading-relaxed">
-                  "The digital marketing course helped me grow my business by 300%. The strategies are practical and
-                  immediately applicable."
+                  {`"The digital marketing course helped me grow my business by 300%. The strategies are practical and
+                  immediately applicable."`}
                 </p>
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-muted-cyan/10 rounded-full flex items-center justify-center mr-4">
