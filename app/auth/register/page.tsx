@@ -86,7 +86,7 @@ export default function RegisterPage() {
 
       // Redirect to home page
       router.push("/")
-    } catch (err) {
+    } catch {
       setError("An error occurred. Please try again.")
     } finally {
       setIsLoading(false)
