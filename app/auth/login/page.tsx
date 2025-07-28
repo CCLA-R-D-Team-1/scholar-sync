@@ -61,7 +61,7 @@ export default function LoginPage() {
       } else {
         router.push("/")
       }
-    } catch (error) {
+    } catch (err) {
       setError("An error occurred. Please try again.")
     } finally {
       setIsLoading(false)
