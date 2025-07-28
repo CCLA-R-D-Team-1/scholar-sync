@@ -22,7 +22,7 @@ interface EditCoursePageProps {
   }
 }
 
-export default function EditCoursePage({ params }: EditCoursePageProps) {
+const EditCoursePage = async ({ params }: EditCoursePageProps) => {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [course, setCourse] = useState<Course | null>(null)
@@ -403,3 +403,5 @@ export default function EditCoursePage({ params }: EditCoursePageProps) {
     </div>
   )
 }
+
+export default EditCoursePage
