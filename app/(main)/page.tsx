@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { CodeXml, ArrowRight, Star, Users, BookOpen, Calendar, TrendingUp, Play, Award, Briefcase } from "lucide-react"
+import { CodeXml, ArrowRight, Star, Users, BookOpen, Calendar, Play, Award, Briefcase } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -286,8 +286,8 @@ export default function HomePage() {
                   ))}
                 </div>
                 <p className="text-muted-slate mb-6 leading-relaxed">
-                  "The web development course completely changed my career trajectory. The instructors are world-class
-                  and the curriculum is cutting-edge."
+                  {`"The web development course completely changed my career trajectory. The instructors are world-class
+                  and the curriculum is cutting-edge."`}
                 </p>
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-deep-sky/10 rounded-full flex items-center justify-center mr-4">
