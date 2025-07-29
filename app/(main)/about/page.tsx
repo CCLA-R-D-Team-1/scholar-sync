@@ -97,7 +97,7 @@ const AboutPage = () => {
                         into a passionate journey of hard work, learning, and connection.
                       </p>
                       <p className="text-lg text-gray-700">
-                        Today, we stand stronger with a clear purpose and a community that continues to inspire us. This is just the beginning of our story, and we're excited to write it together with you.
+                        {`Today, we stand stronger with a clear purpose and a community that continues to inspire us. This is just the beginning of our story, and we're excited to write it together with you.`}
                       </p>
                     </div>
             
