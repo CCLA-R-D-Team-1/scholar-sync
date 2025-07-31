@@ -2,10 +2,13 @@
 import { getCourses, initializeData } from "@/lib/data";
 import { Course } from "@/types";
 import { ArrowRight, Clock, Star, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 const CoursesPage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
+
+  const Router = useRouter(); 
 
   useEffect(() => {
     initializeData();
@@ -151,7 +154,8 @@ const CoursesPage = () => {
                   </div>
 
                   {/* CTA */}
-                  <button className="w-full flex items-center justify-center gap-2 bg-action-blue text-white text-base font-medium rounded-sm py-2 hover:bg-action-blue/90 transition">
+                  <button className="w-full flex items-center justify-center gap-2 bg-action-blue text-white text-base font-medium rounded-sm py-2 hover:bg-action-blue/90 transition"
+                  onClick={() => {Router.push(`/courses/${course.slug}`)}}>
                     View Course <ArrowRight />
                   </button>
                 </div>
