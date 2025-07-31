@@ -61,7 +61,7 @@ export default function LoginPage() {
       } else {
         router.push("/")
       }
-    } catch (err) {
+    } catch {
       setError("An error occurred. Please try again.")
     } finally {
       setIsLoading(false)
@@ -157,7 +157,7 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-gray-600">Don't have an account? </span>
+            <span className="text-gray-600"> {`Don't have an account?`} </span>
             <Link href="/auth/register" className="text-blue-600 hover:text-blue-500 font-medium">
               Sign up
             </Link>
