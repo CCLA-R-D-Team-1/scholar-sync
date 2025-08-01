@@ -8,7 +8,7 @@ import React, { useEffect, useState } from "react";
 const CoursesPage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
 
-  const Router = useRouter(); 
+  const Router = useRouter();
 
   useEffect(() => {
     initializeData();
@@ -17,24 +17,16 @@ const CoursesPage = () => {
 
   return (
     <div className="w-full h-fit">
-      <div className="w-full h-screen bg-gradient-to-br from-deep-sky/30 via-action-blue/40 to-blue-black flex items-center justify-center py-16 px-4 sm:px-8 lg:px-20">
-        <div className="max-w-4xl w-full flex flex-col items-center justify-center text-center gap-6">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-tight">
-            Explore Our Courses
+      <div className="w- h-[75vh] bg-gray-400 flex flex-col items-center justify-center ">
+        <div className="w-3/4">
+          <h1 className="font-bold text-4xl text-center lg:text-left">
+            Discover Expert-Led Courses <br /> to advance your career
           </h1>
-          <p className="text-white text-sm sm:text-base md:text-lg w-full sm:w-10/12">
-            Discover expert-led courses designed to advance your career and
-            expand your skills.
-          </p>
-          <input
-            type="text"
-            placeholder="Search Courses, Instructors or topics"
-            className="w-full sm:w-10/12 md:w-8/12 bg-white px-4 py-3 rounded-lg text-sm shadow focus:outline-none focus:ring-2 focus:ring-action-blue"
-          />
         </div>
+
       </div>
-      <div className="w-full h-fit">
-        <div className="w-full h-[10vh] bg-white shadow-xl flex flex-row items-center justify-evenly">
+      <div className="w-full flex flex-col items-center justify-center -mt-8">
+        <div className="w-10/12 h-[10vh] bg-white shadow-xl flex flex-row items-center justify-between px-12 rounded-sm">
           <div className="w-3/12 flex flex-row items-center justify-center gap-3 ">
             <select
               name=""
@@ -64,7 +56,8 @@ const CoursesPage = () => {
             </select>
           </div>
         </div>
-
+      </div>
+      <div className="w-full h-fit">
         <div className="w-full pt-8 px-[5vw] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => {
             return (
@@ -154,8 +147,12 @@ const CoursesPage = () => {
                   </div>
 
                   {/* CTA */}
-                  <button className="w-full flex items-center justify-center gap-2 bg-action-blue text-white text-base font-medium rounded-sm py-2 hover:bg-action-blue/90 transition"
-                  onClick={() => {Router.push(`/courses/${course.slug}`)}}>
+                  <button
+                    className="w-full flex items-center justify-center gap-2 bg-action-blue text-white text-base font-medium rounded-sm py-2 hover:bg-action-blue/90 transition"
+                    onClick={() => {
+                      Router.push(`/courses/${course.slug}`);
+                    }}
+                  >
                     View Course <ArrowRight />
                   </button>
                 </div>
