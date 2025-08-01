@@ -95,7 +95,7 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Welcome back! Here's what's happening with your platform.</p>
+          <p className="text-gray-600 mt-1">{`Welcome back! Here's what's happening with your platform.`}</p>
         </div>
         <div className="flex space-x-3">
           <Button variant="outline">Export Report</Button>
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats.monthlyRevenue.slice(-6).map((month, index) => (
+              {stats.monthlyRevenue.slice(-6).map((month) => (
                 <div key={month.month} className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-600">{month.month}</span>
                   <div className="flex items-center space-x-2">

@@ -348,7 +348,7 @@ export default function NewCoursePage() {
                   />
                   <Label htmlFor="isActive">Active Course</Label>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Inactive courses won't be visible to students</p>
+                <p className="text-sm text-gray-500 mt-1"> {`Inactive courses won't be visible to students`} </p>
               </CardContent>
             </Card>
 
