@@ -57,7 +57,7 @@ export default function Page({ params }: { params: { slug: string } }) {
         <Unlink className="w-16 h-16 text-gray-400" />
         <div className="text-center">
           <p className="text-2xl font-bold text-gray-800 mb-2">Course Not Found</p>
-          <p className="text-gray-600">The course you're looking for doesn't exist.</p>
+          <p className="text-gray-600">{`The course you're looking for doesn't exist.`}</p>
         </div>
       </div>
     );
@@ -160,7 +160,7 @@ export default function Page({ params }: { params: { slug: string } }) {
 
             {/* What You'll Learn */}
             <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">What You'll Learn</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-6">{`What You'll Learn`}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {course?.syllabus.map((item, index) => (
                   <div key={index} className="flex items-start gap-3">
