@@ -17,7 +17,14 @@ import {
   Users,
 } from "lucide-react";
 
-export default function Page({ params }: { params: { slug: string } }) {
+type PageProps = {
+  params: {
+    slug: string;
+  };
+};
+
+
+export default function Page({ params }: PageProps) {
   const [course, setCourse] = useState<Course | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [notFound, setNotFound] = useState<boolean>(false);

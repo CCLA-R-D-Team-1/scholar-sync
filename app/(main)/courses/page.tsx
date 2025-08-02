@@ -1,7 +1,8 @@
 "use client";
+import { Input } from "@/components/ui/input";
 import { getCourses, initializeData } from "@/lib/data";
 import { Course } from "@/types";
-import { ArrowRight, Clock, Star, Users } from "lucide-react";
+import { ArrowRight, Clock, Search, Star, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
@@ -18,12 +19,22 @@ const CoursesPage = () => {
   return (
     <div className="w-full h-fit">
       <div className="w- h-[75vh] bg-gray-400 flex flex-col items-center justify-center ">
-        <div className="w-3/4">
+        <div className="w-3/4 flex flex-col items-start justify-center gap-4">
           <h1 className="font-bold text-4xl text-center lg:text-left">
             Discover Expert-Led Courses <br /> to advance your career
           </h1>
+          <div className="flex flex-row items-center gap-2 ml-2">
+            <Search className="h-4 w-4 -mr-8 text-slate-700" />
+            <Input
+              type="search"
+              placeholder="Enter Course"
+              className="pl-10 w-72 border border-slate-700 text-slate-700 placeholder:text-slate-700/60"
+            />
+            <button className="bg-action-blue/70 px-4 py-1 text-slate-700/80 rounded-md border border-slate-700/80">
+              Search
+            </button>
+          </div>
         </div>
-
       </div>
       <div className="w-full flex flex-col items-center justify-center -mt-8">
         <div className="w-10/12 h-[10vh] bg-white shadow-xl flex flex-row items-center justify-between px-12 rounded-sm">

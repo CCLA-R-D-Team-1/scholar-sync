@@ -100,7 +100,7 @@ const Navbar = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-slate" />
                   <Input
                     type="search"
-                    placeholder="Search courses..."
+                    placeholder="Search"
                     className="pl-10 w-64 bg-deep-sky/50 border-muted-slate/30 text-clean-white placeholder:text-muted-slate"
                   />
                 </div>
