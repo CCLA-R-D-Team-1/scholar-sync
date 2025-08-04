@@ -562,7 +562,7 @@ export default function ContactPage() {
             {/* Interactive 3D Map */}
             <div className="relative h-80 w-full bg-gradient-to-br from-deep-sky to-midnight-blue">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.215209132713!2d-73.9878449242644!3d40.7484404713897!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c259a9b3117469%3A0xd134e199a405a163!2sEmpire%20State%20Building!5e0!3m2!1sen!2sus!4v1712345678901"
+                src="https://www.google.lk/maps/place/SLIM+KANDY/@7.2818016,80.6203463,19.36z/data=!4m6!3m5!1s0x3ae369ebc5c940e7:0xf7e1365583e8c5dc!8m2!3d7.2820484!4d80.6207375!16s%2Fg%2F11h8918w2f?entry=ttu&g_ep=EgoyMDI1MDczMC4wIKXMDSoASAFQAw%3D%3D"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
