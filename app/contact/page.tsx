@@ -27,7 +27,7 @@ export default function ContactPage() {
     },
     {
       question: /price|cost|fee/i,
-      answer: "Course fees vary depending on the program. On average, our courses range from $199 to $999. We also offer payment plans and scholarships for eligible students."
+      answer: "Course fees v vary depending on the program. On average, our courses range from $199 to $999. We also offer payment plans and scholarships for eligible students."
     },
     {
       question: /event|workshop|seminar/i,
