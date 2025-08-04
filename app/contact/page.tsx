@@ -27,7 +27,7 @@ export default function ContactPage() {
     },
     {
       question: /price|cost|fee/i,
-      answer: "Course fees v vary depending on the program. On average, our courses range from $199 to $999. We also offer payment plans and scholarships for eligible students."
+      answer: "Course fees vary depending on the program. On average, our courses range from $199 to $999. We also offer payment plans and scholarships for eligible students."
     },
     {
       question: /event|workshop|seminar/i,
@@ -145,12 +145,12 @@ export default function ContactPage() {
         </div>
 
         {/* Avatar and Floating Icons */}
-<div className="relative w-full md:w-1/2 h-full z-0 flex items-center justify-center md:mt-16">
-  {/* Advanced Hologram Avatar */}
-  <div 
-    className="relative w-48 h-48 md:w-64 md:h-64 rounded-full bg-gradient-to-br from-primary/30 to-action-blue/30 backdrop-blur-sm border-2 border-primary/40 flex items-center justify-center animate-pulse-slow cursor-pointer"
-    onClick={() => setAiOpen(true)}
-  >
+        <div className="relative w-full md:w-1/2 h-full z-0 flex items-center justify-center md:mt-16">
+          {/* Advanced Hologram Avatar */}
+          <div 
+            className="relative w-48 h-48 md:w-64 md:h-64 rounded-full bg-gradient-to-br from-primary/30 to-action-blue/30 backdrop-blur-sm border-2 border-primary/40 flex items-center justify-center animate-pulse-slow cursor-pointer"
+            onClick={() => setAiOpen(true)}
+          >
             {/* Decorative rings */}
             <div className="absolute inset-0 rounded-full border-4 border-primary/20 animate-spin-slow" style={{ animationDuration: '25s' }}></div>
             <div className="absolute inset-4 rounded-full border-4 border-action-blue/20 animate-spin-slow-reverse" style={{ animationDuration: '30s' }}></div>
@@ -176,80 +176,80 @@ export default function ContactPage() {
             </div>
           </div>
 
-           {/* Floating Contact Icons - Updated with proper spacing */}
-  <div className="absolute inset-0 flex items-center justify-center">
-    {/* Top Right Icon */}
-    <div 
-      className={`absolute w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary/10 backdrop-blur-sm border border-primary/20 flex items-center justify-center contact-float-icon`}
-      style={{ 
-        top: '10%',
-        right: '10%',
-        animationDelay: '0s'
-      }}
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-    </div>
+          {/* Floating Contact Icons */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {/* Top Right Icon */}
+            <div 
+              className={`absolute w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary/10 backdrop-blur-sm border border-primary/20 flex items-center justify-center contact-float-icon`}
+              style={{ 
+                top: '10%',
+                right: '10%',
+                animationDelay: '0s'
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
 
-    {/* Bottom Right Icon */}
-    <div 
-      className={`absolute w-16 h-16 md:w-24 md:h-24 rounded-full bg-action-blue/10 backdrop-blur-sm border border-action-blue/20 flex items-center justify-center contact-float-icon`}
-      style={{ 
-        bottom: '15%',
-        right: '15%',
-        animationDelay: '0.2s'
-      }}
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-action-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-      </svg>
-    </div>
+            {/* Bottom Right Icon */}
+            <div 
+              className={`absolute w-16 h-16 md:w-24 md:h-24 rounded-full bg-action-blue/10 backdrop-blur-sm border border-action-blue/20 flex items-center justify-center contact-float-icon`}
+              style={{ 
+                bottom: '15%',
+                right: '15%',
+                animationDelay: '0.2s'
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-action-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+            </div>
 
-    {/* Top Left Icon */}
-    <div 
-      className={`absolute w-16 h-16 md:w-20 md:h-20 rounded-full bg-blue-hover/10 backdrop-blur-sm border border-blue-hover/20 flex items-center justify-center contact-float-icon`}
-      style={{ 
-        top: '20%',
-        left: '15%',
-        animationDelay: '0.4s'
-      }}
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-hover" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    </div>
+            {/* Top Left Icon */}
+            <div 
+              className={`absolute w-16 h-16 md:w-20 md:h-20 rounded-full bg-blue-hover/10 backdrop-blur-sm border border-blue-hover/20 flex items-center justify-center contact-float-icon`}
+              style={{ 
+                top: '20%',
+                left: '15%',
+                animationDelay: '0.4s'
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-hover" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
 
-    {/* Bottom Left Icon */}
-    <div 
-      className={`absolute w-16 h-16 md:w-24 md:h-24 rounded-full bg-blue-hover/10 backdrop-blur-sm border border-muted-cyan/20 flex items-center justify-center contact-float-icon`}
-      style={{ 
-        bottom: '20%',
-        left: '20%',
-        animationDelay: '0.6s'
-      }}
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-deep-sky" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-      </svg>
-    </div>
+            {/* Bottom Left Icon */}
+            <div 
+              className={`absolute w-16 h-16 md:w-24 md:h-24 rounded-full bg-blue-hover/10 backdrop-blur-sm border border-muted-cyan/20 flex items-center justify-center contact-float-icon`}
+              style={{ 
+                bottom: '20%',
+                left: '20%',
+                animationDelay: '0.6s'
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-deep-sky" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
 
-    {/* Top Center Right Icon */}
-    <div 
-      className={`absolute w-16 h-16 md:w-20 md:h-20 rounded-full bg-deep-sky/10 backdrop-blur-sm border border-deep-sky/20 flex items-center justify-center contact-float-icon`}
-      style={{ 
-        top: '15%',
-        right: '5%',
-        animationDelay: '0.8s'
-      }}
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-deep-sky" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-      </svg>
-    </div>
-  </div>
-</div>
+            {/* Top Center Right Icon */}
+            <div 
+              className={`absolute w-16 h-16 md:w-20 md:h-20 rounded-full bg-deep-sky/10 backdrop-blur-sm border border-deep-sky/20 flex items-center justify-center contact-float-icon`}
+              style={{ 
+                top: '15%',
+                right: '5%',
+                animationDelay: '0.8s'
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-deep-sky" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* AI Assistant Chat Modal */}
@@ -536,7 +536,7 @@ export default function ContactPage() {
             
             <div className="mt-6 group">
               <a href="#" className="text-primary font-medium inline-flex items-center hover:underline cursor-pointer">
-                Can't find what you're looking for? View All FAQs
+                {`Can't find what you're looking for? View All FAQs`}
                 <svg 
                   xmlns="http://www.w3.org/2000/svg" 
                   className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" 
@@ -589,12 +589,10 @@ export default function ContactPage() {
                 </div>
                 <div className="space-y-2 pl-16">
                   <p className="text-muted-slate flex items-center">
-                    
                     123 Education Street, <br />
                     Learning District, <br />
                     Knowledge City 12345. <br />
                   </p>
-                  
                 </div>
               </div>
 
