@@ -49,7 +49,7 @@ export default function HomePage() {
             </Badge>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-clean-white mb-6 leading-tight">
-              Transform Your Future with dammika
+              Transform Your Future
               <span className="block mt-4 bg-gradient-to-r from-muted-cyan to-action-blue bg-clip-text text-transparent">
                 With Elite Learning
               </span>
