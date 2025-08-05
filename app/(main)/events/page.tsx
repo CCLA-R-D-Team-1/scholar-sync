@@ -90,8 +90,8 @@ const EventWireframe: React.FC = () => {
 
     {/* Right Text */}
     <div className="flex-1 text-left">
-      <h3 className="uppercase text-sm tracking-wide text-gray-200 mb-1">About Life and Plants</h3>
-      <h1 className="text-4xl font-bold mb-4 text-white leading-snug">Enjoy <br />Nature</h1>
+      <h3 className="uppercase text-sm tracking-wide text-gray-200 mb-1">event 1</h3>
+      <h1 className="text-4xl font-bold mb-4 text-white leading-snug">event <br />one</h1>
 
       <h2 className="text-xl font-semibold text-white mb-2">Green hosts</h2>
       <p className="text-sm text-gray-200 leading-relaxed">
