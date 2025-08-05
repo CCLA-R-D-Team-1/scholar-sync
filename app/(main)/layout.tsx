@@ -2,6 +2,9 @@ import "../globals.css";
 // import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
+
 
 // const geistSans = Geist({
 //   variable: "--font-geist-sans",
