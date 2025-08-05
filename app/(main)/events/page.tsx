@@ -249,7 +249,7 @@ const EventWireframe: React.FC = () => {
   return (
     <div className="bg-white text-black font-sans">
       {/* Hero Section */}
-      <div className="relative h-[100vh] bg-cover bg-center" style={{ backgroundImage: "url('/your-hero-image.jpg')" }}>
+      <div className="relative h-[75vh] bg-cover bg-center" style={{ backgroundImage: "url('/your-hero-image.jpg')" }}>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-4" data-aos="fade-up">
           <h1 className="text-3xl md:text-4xl font-bold mb-2 drop-shadow-md">Discover Amazing Events</h1>
           <p className="text-sm md:text-base max-w-2xl drop-shadow-md">
