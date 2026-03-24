@@ -2,20 +2,19 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, User, Search, X, GraduationCap } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { usePathname, useRouter } from "next/navigation"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  Menu, X, GraduationCap, User, LogOut,
+  LayoutDashboard, BookOpen, Calendar, ChevronDown,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
-import { getCurrentUser, logout } from "@/lib/auth"
-import type { AuthUser } from "@/types"
+import { getCurrentUser, signOut } from "@/lib/auth"
+import type { AuthUser } from "@/lib/auth"
+import { supabase } from "@/lib/supabase"
 
 const navigation = [
   { name: "Home", href: "/" },
@@ -25,269 +24,253 @@ const navigation = [
   { name: "Contact", href: "/contact" },
 ]
 
-const Navbar = () => {
+export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    getCurrentUser().then(setUser)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      getCurrentUser().then(setUser)
+    })
+    return () => subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
-    setUser(getCurrentUser())
+    const onScroll = () => setIsScrolled(window.scrollY > 10)
+    window.addEventListener("scroll", onScroll)
+    return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await signOut()
     setUser(null)
-    window.location.href = "/"
+    setIsOpen(false)
+    router.push("/")
+    router.refresh()
   }
 
+  const isActive = (href: string) => pathname === href
+
   return (
-    <header className="fixed top-0 w-full z-50">
-      <div className="w-full px-4 pt-15">
-        <nav className={`backdrop-blur-md rounded-3xl mx-auto max-w-7xl shadow-lg border transition-all ${
-          isScrolled 
-            ? "bg-deep-sky/80 border-muted-slate/30 w-55 hover:w-full overflow-hidden duration-600 ease-out" 
-            : "bg-deep-sky/30 border-transparent duration-500 ease-in-out"
-        }`}>
-          <div className="px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16 group">
-              {/*logo and name*/}
-              <Link href="/" className="flex items-center space-x-2 min-w-max">
-                <div className="relative">
-                  <GraduationCap className="h-7 w-7 text-muted-cyan animate-pulse" />
-                  <div className="absolute inset-0 h-7 w-7 bg-muted-cyan/20 rounded-full blur-sm"></div>
-                </div>
-                <span className="text-clean-white text-xl font-bold tracking-tight transition-all duration-300">
-                  Scholar Sync
-                </span>
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled
+          ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100"
+          : "bg-transparent"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-blue-500/30 transition-all">
+              <GraduationCap className="h-5 w-5 text-white" />
+            </div>
+            <span className={`font-bold text-lg transition-colors ${isScrolled ? "text-gray-900" : "text-white"}`}>
+              Scholar Sync
+            </span>
+          </Link>
+
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isActive(item.href)
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : isScrolled
+                    ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    : "text-white/80 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {item.name}
               </Link>
+            ))}
+          </nav>
 
-              {/*desktop nav - left side*/}
-              <div className={`hidden md:flex items-center transition-all duration-300 ${
-                isScrolled ? "opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0" : "opacity-100"
-              }`}>
-                <div className="flex items-center space-x-2">
-                  {navigation.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-action-blue/30 rounded-lg ${
-                        pathname === item.href
-                          ? "text-clean-white bg-action-blue/50"
-                          : "text-muted-slate hover:text-clean-white"
-                      }`}
-                    >
-                      {item.name}
+          {/* Auth */}
+          <div className="hidden md:flex items-center gap-3">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                      isScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {/* Avatar */}
+                    <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      {(user.name || user.email).charAt(0).toUpperCase()}
+                    </div>
+                    <span className="max-w-[120px] truncate">{user.name || user.email}</span>
+                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-0.5">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      <span className={`inline-block mt-1 text-xs font-medium px-1.5 py-0.5 rounded w-fit ${
+                        user.role === "admin" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {user.role}
+                      </span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+
+                  {user.role === "admin" && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin" className="flex items-center gap-2 cursor-pointer">
+                        <LayoutDashboard className="h-4 w-4" />Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+
+                  {user.role === "student" && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
+                        <LayoutDashboard className="h-4 w-4" />Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+                      <User className="h-4 w-4" />My Profile
                     </Link>
-                  ))}
-                </div>
-              </div>
+                  </DropdownMenuItem>
 
-              {/*desktop nav - right side*/}
-              <div className={`hidden md:flex items-center space-x-4 transition-all duration-300 ${
-                isScrolled ? "opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0" : "opacity-100"
-              }`}>
-                {/*search*/}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-slate" />
-                  <Input
-                    type="search"
-                    placeholder="Search"
-                    className="pl-10 w-64 bg-deep-sky/50 border-muted-slate/30 text-clean-white placeholder:text-muted-slate"
-                  />
-                </div>
-
-                {/*user dropdown*/}
-                {user ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-slate hover:text-clean-white hover:bg-action-blue/30"
-                      >
-                        <User className="h-4 w-4 mr-2" />
-                        {user.name}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-deep-sky border-muted-slate/30">
-                      <DropdownMenuItem asChild className="text-muted-slate hover:bg-action-blue/30">
-                        <Link href="/profile">Profile</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild className="text-muted-slate hover:bg-action-blue/30">
-                        <Link href="/bookings">My Bookings</Link>
-                      </DropdownMenuItem>
-                      {user.role === "admin" && (
-                        <>
-                          <DropdownMenuSeparator className="bg-muted-slate/30" />
-                          <DropdownMenuItem asChild className="text-muted-slate hover:bg-action-blue/30">
-                            <Link href="/admin">Admin Dashboard</Link>
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuSeparator className="bg-muted-slate/30" />
-                      <DropdownMenuItem 
-                        onClick={handleLogout}
-                        className="text-muted-slate hover:bg-action-blue/30"
-                      >
-                        Logout
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      asChild
-                      className="text-muted-slate hover:text-clean-white hover:bg-action-blue/30"
-                    >
-                      <Link href="/auth/login">Login</Link>
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      asChild 
-                      className="bg-gradient-to-b from-action-blue via-blue-600 to-blue-hover hover:from-muted-cyan/95 hover:via-action-blue/95 hover:to-blue-hover/95 text-ocean-base/95 font-bold px-6 py-2 rounded-full transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-muted-cyan/30 border-0"
-                    >
-                      <Link href="/auth/register">Sign Up</Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/*mobile hamburger*/}
-              <div className="md:hidden">
-                <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-slate hover:text-clean-white hover:bg-action-blue/30 rounded-lg"
-                    >
-                      {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="bg-deep-sky/80 backdrop-blur-md border-muted-slate/30 rounded-l-2xl">
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center space-x-2">
-                        <div className="relative">
-                          <GraduationCap className="h-6 w-6 text-muted-cyan" />
-                          <div className="absolute inset-0 h-6 w-6 bg-muted-cyan/20 rounded-full blur-sm"></div>
-                        </div>
-                        <span className="text-clean-white text-lg font-bold">
-                          Scholar Sync
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsOpen(false)}
-                        className="text-muted-slate hover:text-clean-white hover:bg-action-blue/30 rounded-lg"
-                      >
-                        <X className="h-6 w-6" />
-                      </Button>
-                    </div>
-                    
-                    <div className="flex flex-col space-y-4">
-                      {navigation.map((item) => (
-                        <Link
-                          key={item.name}
-                          href={item.href}
-                          onClick={() => setIsOpen(false)}
-                          className={`px-4 py-3 text-base font-medium transition-colors duration-200 rounded-lg ${
-                            pathname === item.href
-                              ? "text-clean-white bg-action-blue/50"
-                              : "text-muted-slate hover:text-clean-white hover:bg-action-blue/30"
-                          }`}
-                        >
-                          {item.name}
+                  {user.role === "student" && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/my-courses" className="flex items-center gap-2 cursor-pointer">
+                          <BookOpen className="h-4 w-4" />My Courses
                         </Link>
-                      ))}
+                      </DropdownMenuItem>
+                    </>
+                  )}
 
-                      <div className="pt-4">
-                        {user ? (
-                          <div className="space-y-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-muted-cyan/10 rounded-full flex items-center justify-center">
-                                <User className="h-5 w-5 text-muted-cyan" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-clean-white">{user.name}</p>
-                                <p className="text-sm text-muted-slate">{user.email}</p>
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <Button 
-                                variant="outline" 
-                                className="w-full justify-start bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white" 
-                                asChild
-                              >
-                                <Link href="/profile" onClick={() => setIsOpen(false)}>Profile</Link>
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                className="w-full justify-start bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white" 
-                                asChild
-                              >
-                                <Link href="/bookings" onClick={() => setIsOpen(false)}>My Bookings</Link>
-                              </Button>
-                              {user.role === "admin" && (
-                                <Button 
-                                  variant="outline" 
-                                  className="w-full justify-start bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white" 
-                                  asChild
-                                >
-                                  <Link href="/admin" onClick={() => setIsOpen(false)}>Admin Dashboard</Link>
-                                </Button>
-                              )}
-                              <Button
-                                variant="outline"
-                                className="w-full justify-start bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white"
-                                onClick={() => {
-                                  handleLogout()
-                                  setIsOpen(false)
-                                }}
-                              >
-                                Logout
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <Button 
-                              variant="outline" 
-                              className="w-full bg-transparent text-muted-slate border-muted-slate/30 hover:bg-action-blue/30 hover:text-clean-white" 
-                              asChild
-                            >
-                              <Link href="/auth/login" onClick={() => setIsOpen(false)}>Login</Link>
-                            </Button>
-                            <Button 
-                              className="w-full bg-gradient-to-r from-muted-cyan via-action-blue to-blue-hover hover:from-muted-cyan/95 hover:via-action-blue/95 hover:to-blue-hover/95 text-deep-navy font-bold py-3 rounded-full transition-all duration-200 shadow-lg"
-                              asChild
-                            >
-                              <Link href="/auth/register" onClick={() => setIsOpen(false)}>Sign Up</Link>
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Button
+                  asChild variant="ghost" size="sm"
+                  className={isScrolled ? "text-gray-700" : "text-white hover:bg-white/10"}
+                >
+                  <Link href="/auth/login">Sign In</Link>
+                </Button>
+                <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                  <Link href="/auth/register">Get Started</Link>
+                </Button>
+              </>
+            )}
+          </div>
+
+          {/* Mobile menu toggle */}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className={`md:hidden p-2 rounded-lg transition-colors ${
+              isScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/10"
+            }`}
+            aria-label="Toggle menu"
+          >
+            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {isOpen && (
+        <div className="md:hidden bg-white border-t border-gray-100 shadow-lg">
+          <div className="px-4 py-3 space-y-1">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive(item.href)
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {item.name}
+              </Link>
+            ))}
+
+            <div className="pt-3 border-t border-gray-100 mt-3 space-y-1">
+              {user ? (
+                <>
+                  {/* User info */}
+                  <div className="px-3 py-2 mb-2">
+                    <p className="text-xs font-semibold text-gray-900">{user.name}</p>
+                    <p className="text-xs text-gray-400">{user.email}</p>
+                  </div>
+
+                  {user.role === "admin" && (
+                    <Link href="/admin" onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                      <LayoutDashboard className="h-4 w-4" />Admin Panel
+                    </Link>
+                  )}
+                  {user.role === "student" && (
+                    <>
+                      <Link href="/dashboard" onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <LayoutDashboard className="h-4 w-4" />Dashboard
+                      </Link>
+                      <Link href="/my-courses" onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <BookOpen className="h-4 w-4" />My Courses
+                      </Link>
+                    </>
+                  )}
+                  <Link href="/profile" onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <User className="h-4 w-4" />My Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="h-4 w-4" />Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/auth/login" onClick={() => setIsOpen(false)}
+                    className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Sign In
+                  </Link>
+                  <Link href="/auth/register" onClick={() => setIsOpen(false)}
+                    className="block px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white text-center">
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
-        </nav>
-      </div>
+        </div>
+      )}
     </header>
   )
 }
+
 export default Navbar

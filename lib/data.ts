@@ -1,419 +1,335 @@
-"use client"
+import { supabase } from './supabase'
 
-import type { Course, Event, User, Booking, DashboardStats } from "@/types"
-import { getItem, setItem, generateId } from "./storage"
+// ── COURSES ──────────────────────────────────────────────────────────────────
 
-// Sample data initialization
-const SAMPLE_COURSES: Course[] = [
-  {
-    id: "1",
-    slug: "advanced-web-development",
-    title: "Advanced Web Development with React & Next.js",
-    description:
-      "Master modern web development with React, Next.js, and TypeScript. Build production-ready applications with best practices.",
-    price: 45000,
-    originalPrice: 60000,
-    duration: "12 weeks",
-    level: "Advanced",
-    category: "Web Development",
-    instructor: "Mr. Imamdeen",
-    seats: 30,
-    enrolledCount: 18,
-    rating: 4.8,
-    reviews: 124,
-    image: "/placeholder.svg?height=400&width=600",
-    tags: ["React", "Next.js", "TypeScript", "Full Stack"],
-    syllabus: [
-      "React Fundamentals & Hooks",
-      "Next.js App Router & Server Components",
-      "TypeScript Integration",
-      "State Management with Zustand",
-      "Database Integration",
-      "Authentication & Authorization",
-      "Deployment & Performance Optimization",
-    ],
-    startDate: "2025-08-01",
-    endDate: "2025-10-26",
-    schedule: "Mon, Wed, Fri - 9:00 AM to 3:00 PM",
-    isActive: true,
-    createdAt: "2025-07-15T10:00:00Z",
-    updatedAt: "2025-07-15T10:00:00Z",
-  },
-  
-  {
-    id: "2",
-    slug: "data-science-python",
-    title: "Data Science & Machine Learning with Python",
-    description:
-      "Comprehensive course covering data analysis, visualization, and machine learning using Python and popular libraries.",
-    price: 55000,
-    originalPrice: 75000,
-    duration: "16 weeks",
-    level: "Intermediate",
-    category: "Data Science",
-    instructor: "Ms. Hiruni Piyumika",
-    seats: 25,
-    enrolledCount: 22,
-    rating: 4.9,
-    reviews: 89,
-    image: "/placeholder.svg?height=400&width=600",
-    tags: ["Python", "Machine Learning", "Data Analysis", "AI"],
-    syllabus: [
-      "Python for Data Science",
-      "NumPy & Pandas",
-      "Data Visualization with Matplotlib & Seaborn",
-      "Statistical Analysis",
-      "Machine Learning Algorithms",
-      "Deep Learning Basics",
-      "Real-world Projects",
-    ],
-    startDate: "2025-09-15",
-    endDate: "2026-01-07",
-    schedule: "Tue, Thu - 9:00 AM to 3:00 PM, Sat - 10:00 AM to 5:00 PM",
-    isActive: true,
-    createdAt: "2025-09-10T10:00:00Z",
-    updatedAt: "2025-09-10T10:00:00Z",
-  },
-]
-
-const SAMPLE_EVENTS: Event[] = [
-  {
-    id: "1",
-    slug: "tech-summit-2024",
-    title: "Campus Tech Summit 2024",
-    description:
-      "Join us for the biggest technology conference of the year featuring industry leaders, innovative workshops, and networking opportunities.",
-    shortDescription: "The biggest tech conference with industry leaders and workshops.",
-    startDate: "2024-03-15",
-    endDate: "2024-03-16",
-    startTime: "09:00",
-    endTime: "17:00",
-    venue: "University of Colombo - Main Auditorium",
-    capacity: 500,
-    bookedCount: 287,
-    price: 2500,
-    category: "Technology",
-    organizer: "Campus Tech Society",
-    image: "/placeholder.svg?height=400&width=800",
-    gallery: [
-      "/placeholder.svg?height=300&width=400",
-      "/placeholder.svg?height=300&width=400",
-      "/placeholder.svg?height=300&width=400",
-    ],
-    tags: ["Technology", "Innovation", "Networking", "Workshops"],
-    agenda: [
-      { time: "09:00", title: "Registration & Welcome Coffee" },
-      { time: "10:00", title: "Keynote: Future of AI", speaker: "Dr. Nimal Silva" },
-      { time: "11:30", title: "Panel: Startup Ecosystem in Sri Lanka" },
-      { time: "13:00", title: "Lunch Break" },
-      { time: "14:00", title: "Workshop: Building Scalable Applications" },
-      { time: "15:30", title: "Tech Showcase & Demo" },
-      { time: "16:30", title: "Networking Session" },
-    ],
-    speakers: [
-      {
-        name: "Dr. Nimal Silva",
-        title: "AI Research Director",
-        bio: "Leading AI researcher with 15+ years of experience in machine learning and neural networks.",
-        image: "/placeholder.svg?height=200&width=200",
-      },
-      {
-        name: "Sarah Fernando",
-        title: "Tech Entrepreneur",
-        bio: "Founder of multiple successful startups in the fintech and edtech space.",
-        image: "/placeholder.svg?height=200&width=200",
-      },
-    ],
-    isActive: true,
-    isFeatured: true,
-    createdAt: "2024-01-05T10:00:00Z",
-    updatedAt: "2024-01-05T10:00:00Z",
-  },
-]
-
-// Data management functions
-export function initializeData(): void {
-  // Initialize courses if not exists
-  const existingCourses = getItem<Course[]>("courses", [])
-  if (existingCourses.length === 0) {
-    setItem("courses", SAMPLE_COURSES)
-  }
-
-  // Initialize events if not exists
-  const existingEvents = getItem<Event[]>("events", [])
-  if (existingEvents.length === 0) {
-    setItem("events", SAMPLE_EVENTS)
-  }
-
-  // Initialize users with default admin
-  const existingUsers = getItem<User[]>("users", [])
-  if (existingUsers.length === 0) {
-    const defaultUsers: User[] = [
-      {
-        id: "1",
-        name: "Admin User",
-        email: "admin@campus.lk",
-        role: "admin",
-        isActive: true,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "2",
-        name: "John Doe",
-        email: "john@student.lk",
-        role: "student",
-        university: "University of Colombo",
-        year: "3rd Year",
-        major: "Computer Science",
-        isActive: true,
-        createdAt: new Date().toISOString(),
-      },
-    ]
-    setItem("users", defaultUsers)
-  }
-
-  // Initialize bookings
-  const existingBookings = getItem<Booking[]>("bookings", [])
-  if (existingBookings.length === 0) {
-    setItem("bookings", [])
-  }
+export async function getCourses(activeOnly = true) {
+  let query = supabase.from('courses').select('*').order('created_at', { ascending: false })
+  if (activeOnly) query = query.eq('is_active', true)
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
 }
 
-// CRUD operations for courses
-export function getCourses(): Course[] {
-  return getItem<Course[]>("courses", [])
+export async function getFeaturedCourses() {
+  const { data, error } = await supabase
+    .from('courses')
+    .select('*')
+    .eq('is_active', true)
+    .eq('is_featured', true)
+    .order('rating', { ascending: false })
+    .limit(6)
+  if (error) throw error
+  return data || []
 }
 
-export function getCourse(id: string): Course | undefined {
-  const courses = getCourses()
-  return courses.find((course) => course.id === id)
+export async function getCourseBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from('courses')
+    .select('*')
+    .eq('slug', slug)
+    .single()
+  if (error) return null
+  return data
 }
 
-export function getCourseBySlug(slug: string): Course | undefined {
-  const courses = getCourses()
-  return courses.find((course) => course.slug === slug)
+export async function getCourseById(id: string) {
+  const { data, error } = await supabase
+    .from('courses')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (error) return null
+  return data
 }
 
-export function createCourse(courseData: Omit<Course, "id" | "createdAt" | "updatedAt">): Course {
-  const courses = getCourses()
-  const newCourse: Course = {
-    ...courseData,
-    id: generateId(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-  courses.push(newCourse)
-  setItem("courses", courses)
-  return newCourse
+export async function createCourse(course: {
+  slug: string; title: string; description: string; short_description?: string
+  price: number; original_price?: number; duration: string; level: string
+  category: string; instructor: string; seats: number; image_url?: string
+  tags: string[]; syllabus: string[]; start_date?: string; end_date?: string
+  schedule?: string; is_active: boolean; is_featured: boolean
+}) {
+  const { data, error } = await supabase.from('courses').insert({
+    ...course,
+    enrolled_count: 0,
+    rating: 0,
+    review_count: 0,
+  }).select().single()
+  if (error) throw error
+  return data
 }
 
-export function updateCourse(id: string, updates: Partial<Course>): Course | null {
-  const courses = getCourses()
-  const index = courses.findIndex((course) => course.id === id)
-  if (index === -1) return null
-
-  courses[index] = {
-    ...courses[index],
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  }
-  setItem("courses", courses)
-  return courses[index]
+export async function updateCourse(id: string, updates: Partial<{
+  slug: string; title: string; description: string; short_description: string
+  price: number; original_price: number; duration: string; level: string
+  category: string; instructor: string; seats: number; image_url: string
+  tags: string[]; syllabus: string[]; start_date: string; end_date: string
+  schedule: string; is_active: boolean; is_featured: boolean
+}>) {
+  const { data, error } = await supabase
+    .from('courses')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }
 
-export function deleteCourse(id: string): boolean {
-  const courses = getCourses()
-  const filteredCourses = courses.filter((course) => course.id !== id)
-  if (filteredCourses.length === courses.length) return false
-
-  setItem("courses", filteredCourses)
-  return true
+export async function deleteCourse(id: string) {
+  const { error } = await supabase.from('courses').delete().eq('id', id)
+  if (error) throw error
 }
 
-// CRUD operations for events
-export function getEvents(): Event[] {
-  return getItem<Event[]>("events", [])
+// ── EVENTS ────────────────────────────────────────────────────────────────────
+
+export async function getEvents(activeOnly = true) {
+  let query = supabase.from('events').select('*').order('start_date', { ascending: true })
+  if (activeOnly) query = query.eq('is_active', true)
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
 }
 
-export function getEvent(id: string): Event | undefined {
-  const events = getEvents()
-  return events.find((event) => event.id === id)
+export async function getFeaturedEvents() {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('is_active', true)
+    .eq('is_featured', true)
+    .order('start_date', { ascending: true })
+    .limit(4)
+  if (error) throw error
+  return data || []
 }
 
-export function getEventBySlug(slug: string): Event | undefined {
-  const events = getEvents()
-  return events.find((event) => event.slug === slug)
+export async function getEventBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('slug', slug)
+    .single()
+  if (error) return null
+  return data
 }
 
-export function createEvent(eventData: Omit<Event, "id" | "createdAt" | "updatedAt">): Event {
-  const events = getEvents()
-  const newEvent: Event = {
-    ...eventData,
-    id: generateId(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-  events.push(newEvent)
-  setItem("events", events)
-  return newEvent
+export async function getEventById(id: string) {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (error) return null
+  return data
 }
 
-export function updateEvent(id: string, updates: Partial<Event>): Event | null {
-  const events = getEvents()
-  const index = events.findIndex((event) => event.id === id)
-  if (index === -1) return null
-
-  events[index] = {
-    ...events[index],
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  }
-  setItem("events", events)
-  return events[index]
+export async function createEvent(event: {
+  slug: string; title: string; description: string; short_description?: string
+  start_date: string; end_date?: string; start_time?: string; end_time?: string
+  venue: string; capacity: number; price: number; category: string; organizer: string
+  image_url?: string; tags: string[]; agenda: object[]; speakers: object[]
+  is_active: boolean; is_featured: boolean
+}) {
+  const { data, error } = await supabase.from('events').insert({
+    ...event,
+    booked_count: 0,
+  }).select().single()
+  if (error) throw error
+  return data
 }
 
-export function deleteEvent(id: string): boolean {
-  const events = getEvents()
-  const filteredEvents = events.filter((event) => event.id !== id)
-  if (filteredEvents.length === events.length) return false
-
-  setItem("events", filteredEvents)
-  return true
+export async function updateEvent(id: string, updates: Partial<{
+  slug: string; title: string; description: string; short_description: string
+  start_date: string; end_date: string; start_time: string; end_time: string
+  venue: string; capacity: number; price: number; category: string; organizer: string
+  image_url: string; tags: string[]; agenda: object[]; speakers: object[]
+  is_active: boolean; is_featured: boolean
+}>) {
+  const { data, error } = await supabase
+    .from('events')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }
 
-// CRUD operations for users
-export function getUsers(): User[] {
-  return getItem<User[]>("users", [])
+export async function deleteEvent(id: string) {
+  const { error } = await supabase.from('events').delete().eq('id', id)
+  if (error) throw error
 }
 
-export function getUser(id: string): User | undefined {
-  const users = getUsers()
-  return users.find((user) => user.id === id)
+// ── USERS / PROFILES ──────────────────────────────────────────────────────────
+
+export async function getUsers() {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
 }
 
-export function getUserByEmail(email: string): User | undefined {
-  const users = getUsers()
-  return users.find((user) => user.email === email)
+export async function updateUserRole(userId: string, role: 'admin' | 'student') {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ role, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }
 
-export function createUser(userData: Omit<User, "id" | "createdAt">): User {
-  const users = getUsers()
-  const newUser: User = {
-    ...userData,
-    id: generateId(),
-    createdAt: new Date().toISOString(),
-  }
-  users.push(newUser)
-  setItem("users", users)
-  return newUser
+export async function toggleUserActive(userId: string, isActive: boolean) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }
 
-export function updateUser(id: string, updates: Partial<User>): User | null {
-  const users = getUsers()
-  const index = users.findIndex((user) => user.id === id)
-  if (index === -1) return null
+// ── ENROLLMENTS ──────────────────────────────────────────────────────────────
 
-  users[index] = { ...users[index], ...updates }
-  setItem("users", users)
-  return users[index]
+export async function enrollInCourse(userId: string, courseId: string, amountPaid: number) {
+  const { data, error } = await supabase.from('enrollments').insert({
+    user_id: userId,
+    course_id: courseId,
+    status: 'confirmed',
+    payment_status: 'paid',
+    amount_paid: amountPaid,
+  }).select().single()
+  if (error) throw error
+  // Increment enrolled_count
+  await supabase.rpc('increment_enrolled_count', { course_id: courseId })
+  return data
 }
 
-export function deleteUser(id: string): boolean {
-  const users = getUsers()
-  const filteredUsers = users.filter((user) => user.id !== id)
-  if (filteredUsers.length === users.length) return false
-
-  setItem("users", filteredUsers)
-  return true
+export async function getUserEnrollments(userId: string) {
+  const { data, error } = await supabase
+    .from('enrollments')
+    .select('*, courses(*)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
 }
 
-// CRUD operations for bookings
-export function getBookings(): Booking[] {
-  return getItem<Booking[]>("bookings", [])
+// ── EVENT REGISTRATIONS ───────────────────────────────────────────────────────
+
+export async function registerForEvent(userId: string, eventId: string, quantity: number, amountPaid: number) {
+  const { data, error } = await supabase.from('event_registrations').insert({
+    user_id: userId,
+    event_id: eventId,
+    quantity,
+    status: 'confirmed',
+    payment_status: 'paid',
+    amount_paid: amountPaid,
+  }).select().single()
+  if (error) throw error
+  // Increment booked_count
+  await supabase.rpc('increment_booked_count', { event_id: eventId, qty: quantity })
+  return data
 }
 
-export function getBooking(id: string): Booking | undefined {
-  const bookings = getBookings()
-  return bookings.find((booking) => booking.id === id)
+export async function getUserEventRegistrations(userId: string) {
+  const { data, error } = await supabase
+    .from('event_registrations')
+    .select('*, events(*)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+  if (error) return []
+  return data || []
 }
 
-export function createBooking(bookingData: Omit<Booking, "id" | "createdAt" | "updatedAt">): Booking {
-  const bookings = getBookings()
-  const newBooking: Booking = {
-    ...bookingData,
-    id: generateId(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-  bookings.push(newBooking)
-  setItem("bookings", bookings)
-  return newBooking
+export async function checkUserEnrollment(userId: string, courseId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('enrollments')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('course_id', courseId)
+    .single()
+  return !!data
 }
 
-export function updateBooking(id: string, updates: Partial<Booking>): Booking | null {
-  const bookings = getBookings()
-  const index = bookings.findIndex((booking) => booking.id === id)
-  if (index === -1) return null
-
-  bookings[index] = {
-    ...bookings[index],
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  }
-  setItem("bookings", bookings)
-  return bookings[index]
+export async function checkUserEventRegistration(userId: string, eventId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('event_registrations')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('event_id', eventId)
+    .single()
+  return !!data
 }
 
-export function deleteBooking(id: string): boolean {
-  const bookings = getBookings()
-  const filteredBookings = bookings.filter((booking) => booking.id !== id)
-  if (filteredBookings.length === bookings.length) return false
+// ── CONTACT MESSAGES ─────────────────────────────────────────────────────────
 
-  setItem("bookings", filteredBookings)
-  return true
+export async function submitContactMessage(msg: {
+  name: string; email: string; phone?: string; subject: string; message: string
+}) {
+  const { data, error } = await supabase.from('contact_messages').insert(msg).select().single()
+  if (error) throw error
+  return data
 }
 
-// Dashboard statistics
-export function getDashboardStats(): DashboardStats {
-  const courses = getCourses()
-  const events = getEvents()
-  const users = getUsers()
-  const bookings = getBookings()
+export async function getContactMessages() {
+  const { data, error } = await supabase
+    .from('contact_messages')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
 
-  const totalRevenue = bookings.filter((b) => b.paymentStatus === "paid").reduce((sum, b) => sum + b.totalAmount, 0)
+export async function markMessageAsRead(id: string) {
+  const { error } = await supabase
+    .from('contact_messages')
+    .update({ is_read: true })
+    .eq('id', id)
+  if (error) throw error
+}
 
-  const monthlyRevenue = Array.from({ length: 12 }, (_, i) => {
-    const month = new Date(2024, i).toLocaleDateString("en-US", { month: "short" })
-    const revenue = bookings
-      .filter((b) => {
-        const bookingMonth = new Date(b.createdAt).getMonth()
-        return bookingMonth === i && b.paymentStatus === "paid"
-      })
-      .reduce((sum, b) => sum + b.totalAmount, 0)
+// ── DASHBOARD STATS ───────────────────────────────────────────────────────────
+
+export async function getDashboardStats() {
+  const [
+    { count: totalCourses },
+    { count: totalEvents },
+    { count: totalUsers },
+    { data: enrollmentData },
+    { data: recentEnrollments },
+  ] = await Promise.all([
+    supabase.from('courses').select('*', { count: 'exact', head: true }),
+    supabase.from('events').select('*', { count: 'exact', head: true }),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student'),
+    supabase.from('enrollments').select('amount_paid, created_at'),
+    supabase.from('enrollments').select('*, profiles(full_name, email), courses(title)').order('created_at', { ascending: false }).limit(10),
+  ])
+
+  const totalRevenue = enrollmentData?.reduce((sum, e) => sum + (e.amount_paid || 0), 0) || 0
+
+  // Monthly revenue from last 6 months
+  const now = new Date()
+  const monthlyRevenue = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
+    const month = d.toLocaleString('default', { month: 'short', year: '2-digit' })
+    const revenue = enrollmentData?.filter(e => {
+      const ed = new Date(e.created_at)
+      return ed.getMonth() === d.getMonth() && ed.getFullYear() === d.getFullYear()
+    }).reduce((sum, e) => sum + (e.amount_paid || 0), 0) || 0
     return { month, revenue }
   })
 
-  const popularCourses = courses
-    .sort((a, b) => b.enrolledCount - a.enrolledCount)
-    .slice(0, 5)
-    .map((course) => ({
-      id: course.id,
-      title: course.title,
-      enrollments: course.enrolledCount,
-    }))
-
-  const recentBookings = bookings
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 10)
-
   return {
     totalRevenue,
-    totalCourses: courses.length,
-    totalEvents: events.length,
-    totalUsers: users.filter((u) => u.role === "student").length,
-    activeBookings: bookings.filter((b) => b.status === "confirmed").length,
+    totalCourses: totalCourses || 0,
+    totalEvents: totalEvents || 0,
+    totalStudents: totalUsers || 0,
     monthlyRevenue,
-    popularCourses,
-    recentBookings,
+    recentEnrollments: recentEnrollments || [],
   }
 }

@@ -6,7 +6,7 @@ import { ArrowRight, Star, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { getCourses } from "@/lib/data"
-import { formatCurrency } from "@/lib/storage"
+import { formatCurrency } from "@/lib/utils"
 
 
 const CourseCard = () => {

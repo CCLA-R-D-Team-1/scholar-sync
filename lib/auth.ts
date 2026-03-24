@@ -1,68 +1,165 @@
-"use client"
+/**
+ * lib/auth.ts
+ *
+ * signIn / signUp / signOut / getCurrentUser / isAdmin
+ *
+ * This file is imported by both Client Components (navbar, login page)
+ * and Server Actions (actions.ts).
+ *
+ * Rule: NEVER import 'next/headers' here — it breaks Client Components.
+ * Server Actions that need a server-side session should call
+ * getServerCurrentUser() from lib/auth-server.ts instead.
+ */
 
-import type { AuthUser, User } from "@/types"
-import { getItem, setItem, removeItem } from "./storage"
-import { getUserByEmail } from "./data"
+import { createBrowserClient } from '@supabase/ssr'
 
-const AUTH_KEY = "campus_auth_user"
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export function getCurrentUser(): AuthUser | null {
-  return getItem<AuthUser | null>(AUTH_KEY, null)
+function getClient() {
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
 
-export function setCurrentUser(user: AuthUser): void {
-  setItem(AUTH_KEY, user)
-  // set cookie for middleware
-  if (typeof document !== "undefined") {
-    document.cookie = `campus_auth_user=${JSON.stringify(user)}; path=/; max-age=${60 * 60 * 24 * 7}`
+export interface AuthUser {
+  id: string
+  name: string
+  email: string
+  role: 'admin' | 'student'
+}
+
+// ── SIGN UP ───────────────────────────────────────────────────────────────────
+
+export async function signUp(
+  email: string,
+  password: string,
+  fullName: string,
+): Promise<{ user: AuthUser | null; error: string | null }> {
+  try {
+    const supabase = getClient()
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } },
+    })
+
+    if (error) return { user: null, error: error.message }
+    if (!data.user) return { user: null, error: 'Registration failed' }
+
+    await supabase.from('profiles').upsert(
+      { id: data.user.id, email, full_name: fullName, role: 'student', is_active: true },
+      { onConflict: 'id', ignoreDuplicates: true },
+    )
+
+    return { user: { id: data.user.id, name: fullName, email, role: 'student' }, error: null }
+  } catch (err) {
+    console.error('signUp error:', err)
+    return { user: null, error: 'An unexpected error occurred' }
   }
 }
 
-export function logout(): void {
-  removeItem(AUTH_KEY)
-  // clear cookie
-  if (typeof document !== "undefined") {
-    document.cookie = "campus_auth_user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+// ── SIGN IN ───────────────────────────────────────────────────────────────────
+
+export async function signIn(
+  email: string,
+  password: string,
+): Promise<{ user: AuthUser | null; error: string | null }> {
+  try {
+    const supabase = getClient()
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (error) {
+      console.error('signIn Supabase error:', error.message)
+      return { user: null, error: 'Invalid email or password' }
+    }
+    if (!data.user) return { user: null, error: 'Login failed' }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, role')
+      .eq('id', data.user.id)
+      .single()
+
+    if (!profile) {
+      await supabase.from('profiles').upsert(
+        {
+          id: data.user.id,
+          email: data.user.email!,
+          full_name: data.user.user_metadata?.full_name || email,
+          role: 'student',
+          is_active: true,
+        },
+        { onConflict: 'id', ignoreDuplicates: false },
+      )
+      return {
+        user: {
+          id: data.user.id,
+          name: data.user.user_metadata?.full_name || email,
+          email: data.user.email!,
+          role: 'student',
+        },
+        error: null,
+      }
+    }
+
+    return {
+      user: {
+        id: data.user.id,
+        name: profile.full_name || email,
+        email: data.user.email!,
+        role: profile.role as 'admin' | 'student',
+      },
+      error: null,
+    }
+  } catch (err) {
+    console.error('signIn unexpected error:', err)
+    return { user: null, error: 'An unexpected error occurred' }
   }
 }
 
-export function isAuthenticated(): boolean {
-  return getCurrentUser() !== null
+// ── SIGN OUT ──────────────────────────────────────────────────────────────────
+
+export async function signOut(): Promise<void> {
+  await getClient().auth.signOut()
 }
 
-export function isAdmin(): boolean {
-  const user = getCurrentUser()
-  return user?.role === "admin"
-}
+// ── GET CURRENT USER (browser / client-side) ──────────────────────────────────
+// Safe to call from Client Components (navbar, pages).
+// For Server Actions use getServerCurrentUser() from lib/auth-server.ts
 
-export function requireAuth(): AuthUser {
-  const user = getCurrentUser()
-  if (!user) {
-    throw new Error("Authentication required")
-  }
-  return user
-}
+export async function getCurrentUser(): Promise<AuthUser | null> {
+  try {
+    const supabase = getClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) return null
 
-export function requireAdmin(): AuthUser {
-  const user = requireAuth()
-  if (user.role !== "admin") {
-    throw new Error("Admin access required")
-  }
-  return user
-}
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, role')
+      .eq('id', user.id)
+      .single()
 
-export function authenticateUser(email: string, password: string): User | null {
-  const user = getUserByEmail(email)
-
-  if (!user) {
+    return {
+      id: user.id,
+      name: profile?.full_name || user.user_metadata?.full_name || user.email!,
+      email: user.email!,
+      role: (profile?.role as 'admin' | 'student') || 'student',
+    }
+  } catch (err) {
+    console.error('getCurrentUser error:', err)
     return null
   }
+}
 
-  // For demo purposes, accept any password with 6+ characters
-  // In production, you'd verify against a hashed password
-  if (password.length >= 6) {
-    return user
-  }
+export async function getProfile(userId: string) {
+  const { data } = await getClient()
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single()
+  return data
+}
 
-  return null
+export async function isAdmin(): Promise<boolean> {
+  const user = await getCurrentUser()
+  return user?.role === 'admin'
 }

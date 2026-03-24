@@ -3,25 +3,27 @@ export interface Course {
   slug: string
   title: string
   description: string
+  short_description: string | null
   price: number
-  originalPrice?: number
+  original_price: number | null
   duration: string
-  level: "Beginner" | "Intermediate" | "Advanced"
+  level: 'Beginner' | 'Intermediate' | 'Advanced'
   category: string
   instructor: string
   seats: number
-  enrolledCount: number
+  enrolled_count: number
   rating: number
-  reviews: number
-  image: string
+  review_count: number
+  image_url: string | null
   tags: string[]
   syllabus: string[]
-  startDate: string
-  endDate: string
-  schedule: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+  start_date: string | null
+  end_date: string | null
+  schedule: string | null
+  is_active: boolean
+  is_featured: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface Event {
@@ -29,90 +31,98 @@ export interface Event {
   slug: string
   title: string
   description: string
-  shortDescription: string
-  startDate: string
-  endDate: string
-  startTime: string
-  endTime: string
+  short_description: string | null
+  start_date: string
+  end_date: string | null
+  start_time: string | null
+  end_time: string | null
   venue: string
   capacity: number
-  bookedCount: number
+  booked_count: number
   price: number
   category: string
   organizer: string
-  image: string
-  gallery: string[]
+  image_url: string | null
   tags: string[]
-  agenda: Array<{
-    time: string
-    title: string
-    speaker?: string
-  }>
-  speakers: Array<{
-    name: string
-    title: string
-    bio: string
-    image: string
-  }>
-  isActive: boolean
-  isFeatured: boolean
-  createdAt: string
-  updatedAt: string
+  agenda: { time: string; title: string; speaker?: string }[]
+  speakers: { name: string; title: string; bio: string; image: string }[]
+  is_active: boolean
+  is_featured: boolean
+  created_at: string
+  updated_at: string
 }
 
-export interface User {
+export interface Profile {
+  id: string
+  email: string
+  full_name: string | null
+  phone: string | null
+  role: 'admin' | 'student'
+  avatar_url: string | null
+  university: string | null
+  year_of_study: string | null
+  major: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Enrollment {
+  id: string
+  user_id: string
+  course_id: string
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded'
+  amount_paid: number
+  progress: number        // 0–100
+  notes: string | null
+  created_at: string
+  updated_at: string
+  courses?: Course
+  profiles?: Profile
+}
+
+export interface EventRegistrationWithEvent extends EventRegistration {
+  events?: Event
+}
+
+export interface EventRegistration {
+  id: string
+  user_id: string
+  event_id: string
+  quantity: number
+  status: 'pending' | 'confirmed' | 'cancelled'
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded'
+  amount_paid: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ContactMessage {
   id: string
   name: string
   email: string
-  phone?: string
-  role: "admin" | "student"
-  avatar?: string
-  university?: string
-  year?: string
-  major?: string
-  isActive: boolean
-  createdAt: string
-  lastLogin?: string
-}
-
-export interface Booking {
-  id: string
-  userId: string
-  courseId?: string
-  eventId?: string
-  type: "course" | "event"
-  quantity: number
-  totalAmount: number
-  status: "pending" | "confirmed" | "cancelled" | "completed"
-  paymentStatus: "pending" | "paid" | "failed" | "refunded"
-  paymentMethod?: string
-  notes?: string
-  createdAt: string
-  updatedAt: string
+  phone: string | null
+  subject: string
+  message: string
+  is_read: boolean
+  replied_at: string | null
+  created_at: string
 }
 
 export interface AuthUser {
   id: string
   name: string
   email: string
-  role: "admin" | "student"
-  token: string
+  role: 'admin' | 'student'
 }
 
 export interface DashboardStats {
   totalRevenue: number
   totalCourses: number
   totalEvents: number
-  totalUsers: number
-  activeBookings: number
-  monthlyRevenue: Array<{
-    month: string
-    revenue: number
-  }>
-  popularCourses: Array<{
-    id: string
-    title: string
-    enrollments: number
-  }>
-  recentBookings: Booking[]
+  totalStudents: number
+  monthlyRevenue: { month: string; revenue: number }[]
+  recentEnrollments: Enrollment[]
 }

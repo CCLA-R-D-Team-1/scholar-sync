@@ -1,367 +1,234 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createCourse } from "@/lib/data"
-import type { Course } from "@/types"
+import { slugify } from "@/lib/utils"
 
 export default function NewCoursePage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    title: "",
-    slug: "",
-    description: "",
-    price: "",
-    originalPrice: "",
-    duration: "",
-    level: "Beginner" as Course["level"],
-    category: "",
-    instructor: "",
-    seats: "",
-    image: "",
-    tags: "",
-    syllabus: "",
-    startDate: "",
-    endDate: "",
-    schedule: "",
-    isActive: true,
+  const [error, setError] = useState("")
+  const [tagInput, setTagInput] = useState("")
+  const [syllabusInput, setSyllabusInput] = useState("")
+
+  const [form, setForm] = useState({
+    title: "", short_description: "", description: "",
+    price: "", original_price: "", duration: "",
+    level: "Beginner" as "Beginner" | "Intermediate" | "Advanced",
+    category: "", instructor: "", seats: "30",
+    image_url: "", start_date: "", end_date: "", schedule: "",
+    is_active: true, is_featured: false,
+    tags: [] as string[],
+    syllabus: [] as string[],
   })
 
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
+  const set = (field: string, value: unknown) => setForm((p) => ({ ...p, [field]: value }))
 
-    // Auto-generate slug from title
-    if (field === "title") {
-      const slug = (value as string)
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "")
-      setFormData((prev) => ({
-        ...prev,
-        slug,
-      }))
-    }
+  const addTag = () => {
+    const t = tagInput.trim()
+    if (t && !form.tags.includes(t)) { set("tags", [...form.tags, t]); setTagInput("") }
+  }
+
+  const addSyllabus = () => {
+    const s = syllabusInput.trim()
+    if (s) { set("syllabus", [...form.syllabus, s]); setSyllabusInput("") }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    if (!form.title || !form.description || !form.price || !form.category || !form.instructor) {
+      setError("Please fill in all required fields")
+      return
+    }
     setIsLoading(true)
-
     try {
-      const courseData = {
-        ...formData,
-        price: Number.parseFloat(formData.price) || 0,
-        originalPrice: formData.originalPrice ? Number.parseFloat(formData.originalPrice) : undefined,
-        seats: Number.parseInt(formData.seats) || 0,
-        enrolledCount: 0,
-        rating: 0,
-        reviews: 0,
-        tags: formData.tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-        syllabus: formData.syllabus
-          .split("\n")
-          .map((item) => item.trim())
-          .filter(Boolean),
-      }
-
-      createCourse(courseData)
+      await createCourse({
+        slug: slugify(form.title),
+        title: form.title,
+        description: form.description,
+        short_description: form.short_description || undefined,
+        price: Number(form.price),
+        original_price: form.original_price ? Number(form.original_price) : undefined,
+        duration: form.duration,
+        level: form.level,
+        category: form.category,
+        instructor: form.instructor,
+        seats: Number(form.seats) || 30,
+        image_url: form.image_url || undefined,
+        tags: form.tags,
+        syllabus: form.syllabus,
+        start_date: form.start_date || undefined,
+        end_date: form.end_date || undefined,
+        schedule: form.schedule || undefined,
+        is_active: form.is_active,
+        is_featured: form.is_featured,
+      })
       router.push("/admin/courses")
-    } catch (error) {
-      console.error("Error creating course:", error)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create course")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center space-x-4">
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/courses">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Courses
-          </Link>
+          <Link href="/admin/courses"><ArrowLeft className="h-4 w-4 mr-1" />Back</Link>
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Course</h1>
-          <p className="text-gray-600 mt-1">Add a new course to your catalog</p>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900">New Course</h1>
       </div>
 
+      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Course Title *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => handleInputChange("title", e.target.value)}
-                    placeholder="Enter course title"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="slug">URL Slug *</Label>
-                  <Input
-                    id="slug"
-                    value={formData.slug}
-                    onChange={(e) => handleInputChange("slug", e.target.value)}
-                    placeholder="course-url-slug"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Description *</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => handleInputChange("description", e.target.value)}
-                    placeholder="Enter course description"
-                    rows={4}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="instructor">Instructor *</Label>
-                  <Input
-                    id="instructor"
-                    value={formData.instructor}
-                    onChange={(e) => handleInputChange("instructor", e.target.value)}
-                    placeholder="Instructor name"
-                    required
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="category">Category *</Label>
-                    <Input
-                      id="category"
-                      value={formData.category}
-                      onChange={(e) => handleInputChange("category", e.target.value)}
-                      placeholder="e.g., Web Development"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="level">Level *</Label>
-                    <Select value={formData.level} onValueChange={(value) => handleInputChange("level", value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Beginner">Beginner</SelectItem>
-                        <SelectItem value="Intermediate">Intermediate</SelectItem>
-                        <SelectItem value="Advanced">Advanced</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="duration">Duration *</Label>
-                    <Input
-                      id="duration"
-                      value={formData.duration}
-                      onChange={(e) => handleInputChange("duration", e.target.value)}
-                      placeholder="e.g., 12 weeks"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="seats">Total Seats *</Label>
-                    <Input
-                      id="seats"
-                      type="number"
-                      value={formData.seats}
-                      onChange={(e) => handleInputChange("seats", e.target.value)}
-                      placeholder="30"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="schedule">Schedule *</Label>
-                  <Input
-                    id="schedule"
-                    value={formData.schedule}
-                    onChange={(e) => handleInputChange("schedule", e.target.value)}
-                    placeholder="e.g., Mon, Wed, Fri - 6:00 PM to 8:00 PM"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="startDate">Start Date *</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => handleInputChange("startDate", e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="endDate">End Date *</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => handleInputChange("endDate", e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Content</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="syllabus">Syllabus (one item per line)</Label>
-                  <Textarea
-                    id="syllabus"
-                    value={formData.syllabus}
-                    onChange={(e) => handleInputChange("syllabus", e.target.value)}
-                    placeholder="React Fundamentals&#10;State Management&#10;API Integration"
-                    rows={6}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="tags">Tags (comma separated)</Label>
-                  <Input
-                    id="tags"
-                    value={formData.tags}
-                    onChange={(e) => handleInputChange("tags", e.target.value)}
-                    placeholder="React, JavaScript, Frontend"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pricing</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="price">Price (LKR) *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => handleInputChange("price", e.target.value)}
-                    placeholder="45000"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="originalPrice">Original Price (LKR)</Label>
-                  <Input
-                    id="originalPrice"
-                    type="number"
-                    value={formData.originalPrice}
-                    onChange={(e) => handleInputChange("originalPrice", e.target.value)}
-                    placeholder="60000"
-                  />
-                  <p className="text-sm text-gray-500 mt-1">Leave empty if no discount</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Media</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="image">Course Image URL</Label>
-                  <Input
-                    id="image"
-                    value={formData.image}
-                    onChange={(e) => handleInputChange("image", e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="isActive"
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) => handleInputChange("isActive", checked)}
-                  />
-                  <Label htmlFor="isActive">Active Course</Label>
-                </div>
-                <p className="text-sm text-gray-500 mt-1"> {`Inactive courses won't be visible to students`} </p>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-3">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                <Save className="h-4 w-4 mr-2" />
-                {isLoading ? "Creating..." : "Create Course"}
-              </Button>
-              <Button type="button" variant="outline" className="w-full bg-transparent" asChild>
-                <Link href="/admin/courses">Cancel</Link>
-              </Button>
+        <Card>
+          <CardHeader><CardTitle>Basic Information</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2 space-y-2">
+                <Label>Title <span className="text-red-500">*</span></Label>
+                <Input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Advanced Web Development" required />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label>Short Description</Label>
+                <Input value={form.short_description} onChange={(e) => set("short_description", e.target.value)} placeholder="Brief one-line description" />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label>Full Description <span className="text-red-500">*</span></Label>
+                <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={5} placeholder="Detailed course description..." required />
+              </div>
+              <div className="space-y-2">
+                <Label>Category <span className="text-red-500">*</span></Label>
+                <Input value={form.category} onChange={(e) => set("category", e.target.value)} placeholder="e.g. Web Development" required />
+              </div>
+              <div className="space-y-2">
+                <Label>Instructor <span className="text-red-500">*</span></Label>
+                <Input value={form.instructor} onChange={(e) => set("instructor", e.target.value)} placeholder="Instructor name" required />
+              </div>
+              <div className="space-y-2">
+                <Label>Level</Label>
+                <select value={form.level} onChange={(e) => set("level", e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm">
+                  <option>Beginner</option>
+                  <option>Intermediate</option>
+                  <option>Advanced</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Duration</Label>
+                <Input value={form.duration} onChange={(e) => set("duration", e.target.value)} placeholder="e.g. 12 weeks" />
+              </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Pricing & Seats</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Price (Rs.) <span className="text-red-500">*</span></Label>
+              <Input type="number" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="45000" required />
+            </div>
+            <div className="space-y-2">
+              <Label>Original Price (Rs.)</Label>
+              <Input type="number" value={form.original_price} onChange={(e) => set("original_price", e.target.value)} placeholder="60000" />
+            </div>
+            <div className="space-y-2">
+              <Label>Available Seats</Label>
+              <Input type="number" value={form.seats} onChange={(e) => set("seats", e.target.value)} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Schedule</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Input type="date" value={form.start_date} onChange={(e) => set("start_date", e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>End Date</Label>
+              <Input type="date" value={form.end_date} onChange={(e) => set("end_date", e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Schedule</Label>
+              <Input value={form.schedule} onChange={(e) => set("schedule", e.target.value)} placeholder="e.g. Mon, Wed, Fri 9am-3pm" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Media & Tags</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Image URL</Label>
+              <Input value={form.image_url} onChange={(e) => set("image_url", e.target.value)} placeholder="https://..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <div className="flex gap-2">
+                <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())} placeholder="Add tag..." />
+                <Button type="button" onClick={addTag} variant="outline"><Plus className="h-4 w-4" /></Button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {form.tags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                    {tag}
+                    <button type="button" onClick={() => set("tags", form.tags.filter((t) => t !== tag))}><X className="h-3 w-3" /></button>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Syllabus</Label>
+              <div className="flex gap-2">
+                <Input value={syllabusInput} onChange={(e) => setSyllabusInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSyllabus())} placeholder="Add syllabus item..." />
+                <Button type="button" onClick={addSyllabus} variant="outline"><Plus className="h-4 w-4" /></Button>
+              </div>
+              <ol className="space-y-1 mt-2">
+                {form.syllabus.map((item, i) => (
+                  <li key={i} className="flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded text-sm">
+                    <span>{i + 1}. {item}</span>
+                    <button type="button" onClick={() => set("syllabus", form.syllabus.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500"><X className="h-3 w-3" /></button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Settings</CardTitle></CardHeader>
+          <CardContent className="flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={(e) => set("is_active", e.target.checked)} className="w-4 h-4 rounded" />
+              <span className="text-sm font-medium">Active (visible on website)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.is_featured} onChange={(e) => set("is_featured", e.target.checked)} className="w-4 h-4 rounded" />
+              <span className="text-sm font-medium">Featured (shown on homepage)</span>
+            </label>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" asChild><Link href="/admin/courses">Cancel</Link></Button>
+          <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+            {isLoading ? "Creating..." : "Create Course"}
+          </Button>
         </div>
       </form>
     </div>

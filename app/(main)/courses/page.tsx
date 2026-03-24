@@ -1,179 +1,144 @@
-"use client";
-import { Input } from "@/components/ui/input";
-import { getCourses, initializeData } from "@/lib/data";
-import { Course } from "@/types";
-import { ArrowRight, Clock, Search, Star, Users } from "lucide-react";
-import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+"use client"
 
-const CoursesPage = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { Search, Filter, BookOpen, Clock, Users, Star } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { getCourses } from "@/lib/data"
+import { formatCurrency } from "@/lib/utils"
+import type { Course } from "@/types"
 
-  const Router = useRouter();
+export default function CoursesPage() {
+  const [courses, setCourses] = useState<Course[]>([])
+  const [filtered, setFiltered] = useState<Course[]>([])
+  const [search, setSearch] = useState("")
+  const [level, setLevel] = useState("all")
+  const [category, setCategory] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    initializeData();
-    setCourses(getCourses());
-  }, []);
+    getCourses(true).then((data) => {
+      setCourses(data)
+      setFiltered(data)
+      setIsLoading(false)
+    })
+  }, [])
+
+  useEffect(() => {
+    let res = courses
+    if (search) res = res.filter(c => c.title.toLowerCase().includes(search.toLowerCase()) || c.description.toLowerCase().includes(search.toLowerCase()))
+    if (level !== "all") res = res.filter(c => c.level === level)
+    if (category !== "all") res = res.filter(c => c.category === category)
+    setFiltered(res)
+  }, [search, level, category, courses])
+
+  const categories = ["all", ...Array.from(new Set(courses.map(c => c.category)))]
+  const levels = ["all", "Beginner", "Intermediate", "Advanced"]
+
+  const levelColor = (l: string) => ({ Beginner: "bg-emerald-100 text-emerald-700", Intermediate: "bg-amber-100 text-amber-700", Advanced: "bg-rose-100 text-rose-700" }[l] || "")
 
   return (
-    <div className="w-full h-fit">
-      <div className="w- h-[75vh] bg-gray-400 flex flex-col items-center justify-center ">
-        <div className="w-3/4 flex flex-col items-start justify-center gap-4">
-          <h1 className="font-bold text-4xl text-center lg:text-left">
-            Discover Expert-Led Courses <br /> to advance your career
-          </h1>
-          <div className="flex flex-row items-center gap-2 ml-2">
-            <Search className="h-4 w-4 -mr-8 text-slate-700" />
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero */}
+      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 text-white py-20 px-4">
+        <div className="max-w-6xl mx-auto text-center">
+          <BookOpen className="h-14 w-14 mx-auto mb-6 text-blue-300" />
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Explore Our Courses</h1>
+          <p className="text-xl text-blue-200 max-w-2xl mx-auto mb-8">
+            Unlock your potential with industry-leading courses taught by expert instructors
+          </p>
+          <div className="relative max-w-lg mx-auto">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input
-              type="search"
-              placeholder="Enter Course"
-              className="pl-10 w-72 border border-slate-700 text-slate-700 placeholder:text-slate-700/60"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search courses..."
+              className="pl-12 py-3 text-gray-900 bg-white rounded-xl shadow-lg border-0 text-base"
             />
-            <button className="bg-action-blue/70 px-4 py-1 text-slate-700/80 rounded-md border border-slate-700/80">
-              Search
-            </button>
           </div>
         </div>
       </div>
-      <div className="w-full flex flex-col items-center justify-center -mt-8">
-        <div className="w-10/12 h-[10vh] bg-white shadow-xl flex flex-row items-center justify-between px-12 rounded-sm">
-          <div className="w-3/12 flex flex-row items-center justify-center gap-3 ">
-            <select
-              name=""
-              id=""
-              className="w-1/2 py-2 px-1 rounded-sm bg-white border border-gray-500/50 text-sm"
-            >
-              <option value="all" selected>
-                All Categories
-              </option>
-            </select>
-            <select
-              name=""
-              id=""
-              className="w-1/2 py-2 px-1 rounded-sm bg-white border border-gray-500/50 text-sm"
-            >
-              <option value="all">All Levels</option>
-            </select>
+
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 mb-8 items-center">
+          <Filter className="h-4 w-4 text-gray-500" />
+          <div className="flex flex-wrap gap-2">
+            {levels.map(l => (
+              <button key={l} onClick={() => setLevel(l)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${level === l ? "bg-blue-600 text-white shadow-md" : "bg-white text-gray-600 border hover:border-blue-300"}`}>
+                {l === "all" ? "All Levels" : l}
+              </button>
+            ))}
           </div>
-          <div className="w-1/3 flex flex-row items-center justify-center gap-3">
-            <p className="text-gray-700 text-sm text-nowrap">2 courses found</p>
-            <select
-              name=""
-              id=""
-              className="w-1/3 py-2 border border-gray-500/50 rounded-sm text-sm px-1"
-            >
-              <option value="popular">Most Popular</option>
-            </select>
+          <div className="flex flex-wrap gap-2 ml-4">
+            {categories.map(c => (
+              <button key={c} onClick={() => setCategory(c)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${category === c ? "bg-purple-600 text-white shadow-md" : "bg-white text-gray-600 border hover:border-purple-300"}`}>
+                {c === "all" ? "All Categories" : c}
+              </button>
+            ))}
           </div>
         </div>
-      </div>
-      <div className="w-full h-fit">
-        <div className="w-full pt-8 px-[5vw] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course) => {
-            return (
-              // card start
-              <div
-                key={course.id}
-                className="bg-white shadow-sm rounded-md w-full flex flex-col px-4 py-6 items-stretch justify-between transition hover:shadow-md"
-              >
-                {/* Image and badges */}
-                <div className="w-full aspect-[4/3] bg-gray-300 rounded-sm relative overflow-hidden">
-                  {/* difficulty badge */}
-                  <div className="absolute top-0 left-0 mt-2 ml-2 px-2 text-xs md:text-sm bg-action-blue text-white text-center rounded-full">
-                    {course.level}
+
+        <p className="text-gray-500 mb-6 text-sm">{filtered.length} course{filtered.length !== 1 ? "s" : ""} found</p>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => <div key={i} className="bg-white rounded-2xl h-80 animate-pulse" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-600">No courses found</h3>
+            <p className="text-gray-500 mt-2">Try adjusting your search or filters</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((course) => (
+              <Link key={course.id} href={`/courses/${course.slug}`} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200 hover:-translate-y-1">
+                <div className="relative h-48 bg-gradient-to-br from-blue-600 to-purple-700 overflow-hidden">
+                  {course.image_url ? (
+                    <img src={course.image_url} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <BookOpen className="h-16 w-16 text-white/30" />
+                    </div>
+                  )}
+                  <div className="absolute top-3 left-3">
+                    <Badge className={levelColor(course.level)}>{course.level}</Badge>
                   </div>
-                  {/* duration badge */}
-                  <div className="absolute top-0 right-0 mt-2 mr-2 px-2 flex items-center gap-1 bg-gray-200 rounded-full text-xs md:text-sm text-gray-500">
-                    <Clock className="size-4 md:size-5" />
-                    {course.duration}
+                  {course.is_featured && (
+                    <div className="absolute top-3 right-3 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full">⭐ Featured</div>
+                  )}
+                </div>
+                <div className="p-5">
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">{course.category}</p>
+                  <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-700 transition-colors">{course.title}</h3>
+                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">{course.short_description || course.description}</p>
+                  <p className="text-xs text-gray-500 mb-3">by {course.instructor}</p>
+                  <div className="flex items-center gap-3 text-xs text-gray-500 mb-4">
+                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{course.duration}</span>
+                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{course.enrolled_count} enrolled</span>
+                    {course.rating > 0 && <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />{course.rating.toFixed(1)}</span>}
                   </div>
-                  {/* discount badge */}
-                  <div className="absolute bottom-0 left-0 mb-2 ml-2 px-2 bg-red-700 text-white text-xs md:text-sm rounded-full">
-                    {"Save " +
-                      Math.floor(
-                        100 -
-                          ((course.price ?? 0) / (course.originalPrice ?? 1)) *
-                            100
-                      ) +
-                      "%"}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xl font-bold text-gray-900">{formatCurrency(course.price)}</span>
+                      {course.original_price && (
+                        <span className="text-sm text-gray-400 line-through ml-2">{formatCurrency(course.original_price)}</span>
+                      )}
+                    </div>
+                    <span className="text-sm text-blue-600 font-medium group-hover:underline">View →</span>
                   </div>
                 </div>
-
-                {/* Main content */}
-                <div className="flex-1 mt-4 flex flex-col justify-between">
-                  {/* Rating and category */}
-                  <div className="flex items-center justify-between text-gray-400 text-sm mb-2">
-                    <p>{course.category}</p>
-                    <div className="flex items-center gap-1">
-                      <Star className="text-amber-400 size-4 md:size-5" />
-                      {course.rating}{" "}
-                      <span className="text-xs text-gray-400">
-                        ({course.reviews})
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Title, subtitle, instructor */}
-                  <div className="mb-4">
-                    <h1 className="text-lg md:text-xl font-bold mb-2">
-                      {course.title}
-                    </h1>
-                    <h2 className="text-sm text-gray-500 mb-2">
-                      {course.description}
-                    </h2>
-                    <p className="text-sm font-medium text-gray-500">
-                      by: {course.instructor}
-                    </p>
-                  </div>
-
-                  {/* Price section */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 text-sm">
-                    {/* enrolled */}
-                    <div className="flex items-center gap-1 text-gray-500 mb-2 sm:mb-0">
-                      <Users className="size-4" />
-                      {course.enrolledCount} / {course.seats} enrolled
-                    </div>
-                    {/* prices */}
-                    <div className="flex flex-col items-start sm:items-end">
-                      <p className="line-through text-gray-500 text-sm">
-                        Rs. {course.originalPrice?.toLocaleString()}
-                      </p>
-                      <p className="text-lg font-bold text-action-blue">
-                        Rs. {course.price?.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* tags */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {course.tags.map((tag, index) => (
-                      <p
-                        key={index}
-                        className="font-medium bg-gray-200 px-2 py-1 rounded-sm text-xs"
-                      >
-                        {tag}
-                      </p>
-                    ))}
-                  </div>
-
-                  {/* CTA */}
-                  <button
-                    className="w-full flex items-center justify-center gap-2 bg-action-blue text-white text-base font-medium rounded-sm py-2 hover:bg-action-blue/90 transition"
-                    onClick={() => {
-                      Router.push(`/courses/${course.slug}`);
-                    }}
-                  >
-                    View Course <ArrowRight />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
-  );
-};
-
-export default CoursesPage;
+  )
+}
