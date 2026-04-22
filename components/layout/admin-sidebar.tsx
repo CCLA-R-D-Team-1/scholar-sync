@@ -3,16 +3,29 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Calendar, Users, LogOut, ChevronLeft, ChevronRight, Home, MessageSquare, GraduationCap } from "lucide-react"
+import {
+  LayoutDashboard, BookOpen, Users, LogOut, ChevronLeft, ChevronRight,
+  Home, MessageSquare, GraduationCap, CalendarDays, ClipboardList,
+  Award, FileText, FolderOpen, UserCheck, BarChart3, Layers, PhoneCall
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { signOut } from "@/lib/auth"
 
 const navigation = [
-  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { name: "Courses", href: "/admin/courses", icon: BookOpen },
-  { name: "Events", href: "/admin/events", icon: Calendar },
-  { name: "Users", href: "/admin/users", icon: Users },
-  { name: "Messages", href: "/admin/messages", icon: MessageSquare },
+  { name: "Dashboard",        href: "/admin",                    icon: LayoutDashboard },
+  { name: "Leads",            href: "/admin/leads",              icon: PhoneCall },
+  { name: "Students",         href: "/admin/students",           icon: Users },
+  { name: "Courses",          href: "/admin/courses",            icon: BookOpen },
+  { name: "Modules",          href: "/admin/modules",            icon: Layers },
+  { name: "Batches",          href: "/admin/batches",            icon: CalendarDays },
+  { name: "Trainers",         href: "/admin/trainers",           icon: UserCheck },
+  { name: "Enrollments",      href: "/admin/enrollments",        icon: ClipboardList },
+  { name: "Attendance",       href: "/admin/attendance",         icon: CalendarDays },
+  { name: "Assessments",      href: "/admin/assessments",        icon: FileText },
+  { name: "Certificates",     href: "/admin/certificates",       icon: Award },
+  { name: "Resources",        href: "/admin/resources",          icon: FolderOpen },
+  { name: "Reports",          href: "/admin/reports",            icon: BarChart3 },
+  { name: "Messages",         href: "/admin/messages",           icon: MessageSquare },
 ]
 
 export function AdminSidebar() {
@@ -34,10 +47,13 @@ export function AdminSidebar() {
       <div className="flex items-center justify-between p-4 border-b border-white/10">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
               <GraduationCap className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-sm">Scholar Sync</span>
+            <div>
+              <span className="font-bold text-sm leading-none">CADD Centre</span>
+              <p className="text-xs text-gray-400">ASMS Admin</p>
+            </div>
           </div>
         )}
         <button
@@ -49,10 +65,10 @@ export function AdminSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+      <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
         {!collapsed && (
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
-            Main Menu
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2 mt-1">
+            Management
           </p>
         )}
         {navigation.map((item) => (
@@ -61,14 +77,14 @@ export function AdminSidebar() {
             href={item.href}
             title={collapsed ? item.name : undefined}
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+              "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all",
               isActive(item.href)
                 ? "bg-blue-600 text-white shadow-md"
                 : "text-gray-400 hover:text-white hover:bg-white/10",
               collapsed && "justify-center"
             )}
           >
-            <item.icon className="h-5 w-5 flex-shrink-0" />
+            <item.icon className="h-4 w-4 flex-shrink-0" />
             {!collapsed && item.name}
           </Link>
         ))}
@@ -80,22 +96,22 @@ export function AdminSidebar() {
           href="/"
           title={collapsed ? "View Site" : undefined}
           className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/10 transition-all",
+            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/10 transition-all",
             collapsed && "justify-center"
           )}
         >
-          <Home className="h-5 w-5 flex-shrink-0" />
+          <Home className="h-4 w-4 flex-shrink-0" />
           {!collapsed && "View Site"}
         </Link>
         <button
           onClick={handleLogout}
           title={collapsed ? "Sign Out" : undefined}
           className={cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-white hover:bg-red-600/20 transition-all",
+            "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-400 hover:text-white hover:bg-red-600/20 transition-all",
             collapsed && "justify-center"
           )}
         >
-          <LogOut className="h-5 w-5 flex-shrink-0" />
+          <LogOut className="h-4 w-4 flex-shrink-0" />
           {!collapsed && "Sign Out"}
         </button>
       </div>

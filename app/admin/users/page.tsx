@@ -1,132 +1,134 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Search, Shield, ShieldOff, UserCheck, UserX } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Users, Search } from "lucide-react"
 import { getUsers, updateUserRole, toggleUserActive } from "@/lib/data"
 import { formatDateTime } from "@/lib/utils"
-import type { Profile } from "@/types"
 
-export default function AdminUsersPage() {
-  const [users, setUsers] = useState<Profile[]>([])
+const ROLES = ['admin','academic_manager','trainer','student','coordinator'] as const
+
+const ROLE_COLORS: Record<string, string> = {
+  admin:            "bg-red-100 text-red-800",
+  academic_manager: "bg-purple-100 text-purple-800",
+  trainer:          "bg-blue-100 text-blue-800",
+  student:          "bg-green-100 text-green-800",
+  coordinator:      "bg-orange-100 text-orange-800",
+}
+
+export default function UsersPage() {
+  const [users, setUsers] = useState<any[]>([])
+  const [filtered, setFiltered] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
 
-  const load = useCallback(async () => {
-    setIsLoading(true)
-    const data = await getUsers()
-    setUsers(data)
-    setIsLoading(false)
+  useEffect(() => {
+    getUsers().then(data => { setUsers(data); setFiltered(data) }).finally(() => setIsLoading(false))
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const q = search.toLowerCase()
+    let list = users
+    if (roleFilter !== "all") list = list.filter(u => u.role === roleFilter)
+    setFiltered(list.filter(u =>
+      (u.full_name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.student_id || "").toLowerCase().includes(q)
+    ))
+  }, [search, roleFilter, users])
 
-  const filtered = users.filter(u => {
-    const matchSearch = !search ||
-      (u.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
-    const matchRole = roleFilter === "all" || u.role === roleFilter
-    return matchSearch && matchRole
-  })
-
-  const handleRoleChange = async (id: string, role: "admin" | "student") => {
+  const changeRole = async (id: string, role: string) => {
     await updateUserRole(id, role)
-    load()
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u))
   }
 
-  const handleToggleActive = async (id: string, current: boolean) => {
+  const toggleActive = async (id: string, current: boolean) => {
     await toggleUserActive(id, !current)
-    load()
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: !current } : u))
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-        <p className="text-gray-600 mt-1">{users.length} registered users</p>
-      </div>
-
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-        </div>
-        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="border rounded-md px-3 py-2 text-sm">
-          <option value="all">All Roles</option>
-          <option value="admin">Admin</option>
-          <option value="student">Student</option>
-        </select>
+        <p className="text-gray-600 mt-1">Manage all system users and their roles</p>
       </div>
 
       <Card>
-        <CardContent className="p-0">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> All Users ({filtered.length})</CardTitle>
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input className="pl-9" placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <select
+              className="border rounded-md px-3 py-2 text-sm"
+              value={roleFilter}
+              onChange={e => setRoleFilter(e.target.value)}
+            >
+              <option value="all">All Roles</option>
+              {ROLES.map(r => <option key={r} value={r}>{r.replace("_", " ")}</option>)}
+            </select>
+          </div>
+        </CardHeader>
+        <CardContent>
           {isLoading ? (
-            <div className="p-6 space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}</div>
-          ) : filtered.length === 0 ? (
-            <p className="text-center text-gray-500 py-12">No users found</p>
+            <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />)}</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.full_name || "—"}</TableCell>
-                    <TableCell className="text-gray-600">{user.email}</TableCell>
-                    <TableCell>
-                      <Badge className={user.role === "admin" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}>
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={user.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                        {user.is_active ? "Active" : "Suspended"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-gray-500 text-sm">{formatDateTime(user.created_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">•••</Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {user.role !== "admin" ? (
-                            <DropdownMenuItem onClick={() => handleRoleChange(user.id, "admin")}>
-                              <Shield className="h-4 w-4 mr-2" />Make Admin
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem onClick={() => handleRoleChange(user.id, "student")}>
-                              <ShieldOff className="h-4 w-4 mr-2" />Remove Admin
-                            </DropdownMenuItem>
-                          )}
-                          {user.is_active ? (
-                            <DropdownMenuItem onClick={() => handleToggleActive(user.id, user.is_active)} className="text-red-600">
-                              <UserX className="h-4 w-4 mr-2" />Suspend
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem onClick={() => handleToggleActive(user.id, user.is_active)}>
-                              <UserCheck className="h-4 w-4 mr-2" />Activate
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Name</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Email</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Student ID</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Role</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Joined</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr><td colSpan={7} className="text-center py-8 text-gray-500">No users found</td></tr>
+                  ) : filtered.map(user => (
+                    <tr key={user.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4 font-medium">{user.full_name || "—"}</td>
+                      <td className="py-3 px-4 text-gray-600">{user.email}</td>
+                      <td className="py-3 px-4 font-mono text-xs text-blue-700">{user.student_id || "—"}</td>
+                      <td className="py-3 px-4">
+                        <Badge className={ROLE_COLORS[user.role] || "bg-gray-100 text-gray-800"}>
+                          {user.role?.replace("_", " ")}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge className={user.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                          {user.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-gray-500 text-xs">{formatDateTime(user.created_at)}</td>
+                      <td className="py-3 px-4 flex gap-2 flex-wrap">
+                        <select
+                          className="text-xs border rounded px-2 py-1"
+                          value={user.role}
+                          onChange={e => changeRole(user.id, e.target.value)}
+                        >
+                          {ROLES.map(r => <option key={r} value={r}>{r.replace("_", " ")}</option>)}
+                        </select>
+                        <Button variant="outline" size="sm" onClick={() => toggleActive(user.id, user.is_active)}>
+                          {user.is_active ? "Deactivate" : "Activate"}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>

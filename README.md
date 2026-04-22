@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ASMS — Academic & Student Management System
+### CADD Centre Lanka
 
-## Getting Started
+A centralized system for managing the full student lifecycle at CADD Centre Lanka, built with Next.js 14 (App Router) and Supabase.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🎯 System Overview
+
+Aligned to the **CADD Centre Lanka SRD** — covers:
+
+| Module | Description |
+|---|---|
+| Student Management | Registration, profiles, student ID generation |
+| Course & Program Management | BIM / CAD / PM courses with Proficient / Master / Expert levels |
+| Module Management | Sub-modules per course (Revit Architecture, MEP, Navisworks, etc.) |
+| Batch & Scheduling | Batch creation, timetable, classroom / online / hybrid modes |
+| Trainer Management | Trainer profiles, allocation to batches/modules |
+| Enrollment | Student enrollment with batch allocation + payment tracking |
+| Attendance | Daily attendance marking (present/absent/late/excused) |
+| Academic Progress | Module-wise progress tracking, practical + theory scoring |
+| Assessments & Exams | Module tests, practicals, final project evaluations |
+| Certification | Auto certificate generation with QR code + unique cert number |
+| Learning Resources | E-books, video tutorials, BIM practice guides per module |
+| Student Portal | View progress, attendance, results, certificates, resources |
+| Reports | Enrollment, attendance, course-wise performance, certification |
+
+---
+
+## 👥 User Roles
+
+| Role | Access |
+|---|---|
+| `admin` | Full system control |
+| `academic_manager` | Courses, batches, trainers |
+| `trainer` | Attendance, progress marking |
+| `student` | Student portal (own data only) |
+| `coordinator` | Enrollment, scheduling |
+
+---
+
+## 🏗️ Course Structure
+
+CADD programmes follow 3 certificate levels:
+
+- **Proficient Certificate** — ~80 hours
+- **Master Certificate** — ~160 hours
+- **Expert Certificate** — ~240 hours
+
+### BIM Programme (148h — Master Certificate)
+Modules:
+1. Revit Architecture (40h) — 3D Modeling, Views, Families, Rendering
+2. Revit MEP (40h) — HVAC, Plumbing, Electrical, Quantity take-off
+3. Navisworks (35h) — Clash detection, 4D simulation, Coordination
+4. Project Management (33h) — Scheduling, Resource planning, WBS
+
+---
+
+## 🗄️ Database Setup
+
+1. Go to your [Supabase project](https://supabase.com) → SQL Editor
+2. Run `SUPABASE_SCHEMA.sql` (fresh install), **or**
+3. Run `MIGRATION_PHASE1.sql` (upgrading from scholar-sync)
+
+---
+
+## ⚙️ Environment
+
+Copy `.env.local` and set:
+```
+NEXT_PUBLIC_SUPABASE_URL=your_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Running
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Admin panel: `/admin`  
+Student portal: `/dashboard`
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🔑 First Admin
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+After signing up, run in Supabase SQL Editor:
+```sql
+UPDATE public.profiles SET role = 'admin' WHERE email = 'your@email.com';
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📋 Student Lifecycle Flow
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+Registration → Enrollment → Batch Allocation → Module Learning
+    → Attendance Tracking → Assessment → Certification
+```

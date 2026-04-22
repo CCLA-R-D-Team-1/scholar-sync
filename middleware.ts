@@ -1,28 +1,23 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-// Routes that need authentication
-const PROTECTED_ROUTES = ['/dashboard', '/profile', '/my-courses']
+const PROTECTED_ROUTES = ['/dashboard', '/profile', '/my-courses', '/my-attendance', '/my-results', '/my-progress', '/my-certificates', '/resources']
 const ADMIN_ROUTES = ['/admin']
+
+type CookieToSet = { name: string; value: string; options?: CookieOptions }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const isAdminRoute = ADMIN_ROUTES.some((route) => pathname.startsWith(route))
+  const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
 
-  const isAdminRoute = ADMIN_ROUTES.some((r) => pathname.startsWith(r))
-  const isProtectedRoute = PROTECTED_ROUTES.some((r) => pathname.startsWith(r))
-
-  // Skip middleware entirely for routes we don't protect
   if (!isAdminRoute && !isProtectedRoute) {
     return NextResponse.next()
   }
 
-  // Build a response object we can mutate (to refresh cookies)
-  let response = NextResponse.next({
-    request: { headers: request.headers },
-  })
+  let response = NextResponse.next({ request: { headers: request.headers } })
 
-  // Create SSR-aware Supabase client that reads/writes cookies correctly
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -31,22 +26,15 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
+        setAll(cookiesToSet: CookieToSet[]) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request: { headers: request.headers } })
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
         },
       },
-    }
+    },
   )
 
-  // getUser() validates the JWT and refreshes the session if needed
   const {
     data: { user },
     error,
@@ -54,7 +42,6 @@ export async function middleware(request: NextRequest) {
 
   const isAuthenticated = !!user && !error
 
-  // ── Admin routes ────────────────────────────────────────────────────────────
   if (isAdminRoute) {
     if (!isAuthenticated) {
       const url = new URL('/auth/login', request.url)
@@ -63,19 +50,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Fetch role from profiles table
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    const isStaff = ['admin', 'academic_manager', 'coordinator'].includes(profile?.role ?? '')
 
-    if (profile?.role !== 'admin') {
+    if (!isStaff) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
 
-  // ── Protected student routes ─────────────────────────────────────────────
   if (isProtectedRoute && !isAuthenticated) {
     const url = new URL('/auth/login', request.url)
     url.searchParams.set('redirect', pathname)
@@ -92,5 +74,10 @@ export const config = {
     '/dashboard/:path*',
     '/profile/:path*',
     '/my-courses/:path*',
+    '/my-attendance/:path*',
+    '/my-results/:path*',
+    '/my-progress/:path*',
+    '/my-certificates/:path*',
+    '/resources/:path*',
   ],
 }

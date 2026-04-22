@@ -1,33 +1,28 @@
-// app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google"
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Scholar Sync",
-  description: "Premium Course Sales and Event Booking Platform",
+  description: "Academic and Student Management System for CADD Centre Lanka",
 };
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-soft-linen`}>
+      <body
+        className="antialiased bg-soft-linen"
+        style={{
+          fontFamily:
+            'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        }}
+      >
         {children}
       </body>
     </html>
   );
-};
+}

@@ -1,17 +1,5 @@
-/**
- * lib/auth.ts
- *
- * signIn / signUp / signOut / getCurrentUser / isAdmin
- *
- * This file is imported by both Client Components (navbar, login page)
- * and Server Actions (actions.ts).
- *
- * Rule: NEVER import 'next/headers' here — it breaks Client Components.
- * Server Actions that need a server-side session should call
- * getServerCurrentUser() from lib/auth-server.ts instead.
- */
-
 import { createBrowserClient } from '@supabase/ssr'
+import type { UserRole } from '@/types'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -24,10 +12,8 @@ export interface AuthUser {
   id: string
   name: string
   email: string
-  role: 'admin' | 'student'
+  role: UserRole
 }
-
-// ── SIGN UP ───────────────────────────────────────────────────────────────────
 
 export async function signUp(
   email: string,
@@ -56,8 +42,6 @@ export async function signUp(
     return { user: null, error: 'An unexpected error occurred' }
   }
 }
-
-// ── SIGN IN ───────────────────────────────────────────────────────────────────
 
 export async function signIn(
   email: string,
@@ -106,7 +90,7 @@ export async function signIn(
         id: data.user.id,
         name: profile.full_name || email,
         email: data.user.email!,
-        role: profile.role as 'admin' | 'student',
+        role: (profile.role as UserRole) || 'student',
       },
       error: null,
     }
@@ -116,20 +100,17 @@ export async function signIn(
   }
 }
 
-// ── SIGN OUT ──────────────────────────────────────────────────────────────────
-
 export async function signOut(): Promise<void> {
   await getClient().auth.signOut()
 }
 
-// ── GET CURRENT USER (browser / client-side) ──────────────────────────────────
-// Safe to call from Client Components (navbar, pages).
-// For Server Actions use getServerCurrentUser() from lib/auth-server.ts
-
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const supabase = getClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
     if (error || !user) return null
 
     const { data: profile } = await supabase
@@ -142,7 +123,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       id: user.id,
       name: profile?.full_name || user.user_metadata?.full_name || user.email!,
       email: user.email!,
-      role: (profile?.role as 'admin' | 'student') || 'student',
+      role: (profile?.role as UserRole) || 'student',
     }
   } catch (err) {
     console.error('getCurrentUser error:', err)
@@ -151,11 +132,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 }
 
 export async function getProfile(userId: string) {
-  const { data } = await getClient()
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
+  const { data } = await getClient().from('profiles').select('*').eq('id', userId).single()
   return data
 }
 

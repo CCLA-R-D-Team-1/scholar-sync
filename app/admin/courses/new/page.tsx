@@ -1,236 +1,150 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Plus, X } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Textarea } from "@/components/ui/textarea"
+import { ArrowLeft } from "lucide-react"
 import { createCourse } from "@/lib/data"
-import { slugify } from "@/lib/utils"
 
 export default function NewCoursePage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  const [tagInput, setTagInput] = useState("")
-  const [syllabusInput, setSyllabusInput] = useState("")
-
   const [form, setForm] = useState({
-    title: "", short_description: "", description: "",
-    price: "", original_price: "", duration: "",
-    level: "Beginner" as "Beginner" | "Intermediate" | "Advanced",
-    category: "", instructor: "", seats: "30",
-    image_url: "", start_date: "", end_date: "", schedule: "",
+    title: "", slug: "", description: "", short_description: "",
+    price: "", original_price: "",
+    level: "Proficient Certificate",
+    category: "BIM",
+    total_hours: "80",
+    tags: "",
     is_active: true, is_featured: false,
-    tags: [] as string[],
-    syllabus: [] as string[],
   })
 
-  const set = (field: string, value: unknown) => setForm((p) => ({ ...p, [field]: value }))
+  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
-  const addTag = () => {
-    const t = tagInput.trim()
-    if (t && !form.tags.includes(t)) { set("tags", [...form.tags, t]); setTagInput("") }
-  }
-
-  const addSyllabus = () => {
-    const s = syllabusInput.trim()
-    if (s) { set("syllabus", [...form.syllabus, s]); setSyllabusInput("") }
-  }
+  const autoSlug = (title: string) =>
+    title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    if (!form.title || !form.description || !form.price || !form.category || !form.instructor) {
-      setError("Please fill in all required fields")
-      return
-    }
     setIsLoading(true)
     try {
       await createCourse({
-        slug: slugify(form.title),
+        slug: form.slug || autoSlug(form.title),
         title: form.title,
         description: form.description,
         short_description: form.short_description || undefined,
-        price: Number(form.price),
-        original_price: form.original_price ? Number(form.original_price) : undefined,
-        duration: form.duration,
+        price: parseFloat(form.price),
+        original_price: form.original_price ? parseFloat(form.original_price) : undefined,
         level: form.level,
         category: form.category,
-        instructor: form.instructor,
-        seats: Number(form.seats) || 30,
-        image_url: form.image_url || undefined,
-        tags: form.tags,
-        syllabus: form.syllabus,
-        start_date: form.start_date || undefined,
-        end_date: form.end_date || undefined,
-        schedule: form.schedule || undefined,
+        total_hours: parseInt(form.total_hours),
+        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
         is_active: form.is_active,
         is_featured: form.is_featured,
       })
       router.push("/admin/courses")
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create course")
+    } catch (err: any) {
+      setError(err.message || "Failed to create course")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6 max-w-2xl">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/courses"><ArrowLeft className="h-4 w-4 mr-1" />Back</Link>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/admin/courses"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link>
         </Button>
-        <h1 className="text-3xl font-bold text-gray-900">New Course</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">New Course</h1>
+          <p className="text-gray-600 text-sm">Create a new CADD Centre programme</p>
+        </div>
       </div>
 
-      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader><CardTitle>Basic Information</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2 space-y-2">
-                <Label>Title <span className="text-red-500">*</span></Label>
-                <Input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Advanced Web Development" required />
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <Label>Short Description</Label>
-                <Input value={form.short_description} onChange={(e) => set("short_description", e.target.value)} placeholder="Brief one-line description" />
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <Label>Full Description <span className="text-red-500">*</span></Label>
-                <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={5} placeholder="Detailed course description..." required />
-              </div>
+      <Card>
+        <CardHeader><CardTitle>Course Details</CardTitle></CardHeader>
+        <CardContent>
+          {error && <Alert variant="destructive" className="mb-4"><AlertDescription>{error}</AlertDescription></Alert>}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Title *</Label>
+              <Input placeholder="e.g. BIM Master Certificate" value={form.title}
+                onChange={e => { set("title", e.target.value); set("slug", autoSlug(e.target.value)) }} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Slug</Label>
+              <Input placeholder="auto-generated" value={form.slug} onChange={e => set("slug", e.target.value)} />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Category <span className="text-red-500">*</span></Label>
-                <Input value={form.category} onChange={(e) => set("category", e.target.value)} placeholder="e.g. Web Development" required />
-              </div>
-              <div className="space-y-2">
-                <Label>Instructor <span className="text-red-500">*</span></Label>
-                <Input value={form.instructor} onChange={(e) => set("instructor", e.target.value)} placeholder="Instructor name" required />
-              </div>
-              <div className="space-y-2">
-                <Label>Level</Label>
-                <select value={form.level} onChange={(e) => set("level", e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm">
-                  <option>Beginner</option>
-                  <option>Intermediate</option>
-                  <option>Advanced</option>
+                <Label>Level *</Label>
+                <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.level} onChange={e => set("level", e.target.value)}>
+                  <option>Proficient Certificate</option>
+                  <option>Master Certificate</option>
+                  <option>Expert Certificate</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <Label>Duration</Label>
-                <Input value={form.duration} onChange={(e) => set("duration", e.target.value)} placeholder="e.g. 12 weeks" />
+                <Label>Category *</Label>
+                <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.category} onChange={e => set("category", e.target.value)}>
+                  <option>BIM</option>
+                  <option>CAD</option>
+                  <option>Project Management</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Total Hours *</Label>
+                <Input type="number" min="1" value={form.total_hours} onChange={e => set("total_hours", e.target.value)} required />
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Pricing & Seats</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Price (Rs.) <span className="text-red-500">*</span></Label>
-              <Input type="number" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="45000" required />
-            </div>
-            <div className="space-y-2">
-              <Label>Original Price (Rs.)</Label>
-              <Input type="number" value={form.original_price} onChange={(e) => set("original_price", e.target.value)} placeholder="60000" />
-            </div>
-            <div className="space-y-2">
-              <Label>Available Seats</Label>
-              <Input type="number" value={form.seats} onChange={(e) => set("seats", e.target.value)} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Schedule</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Start Date</Label>
-              <Input type="date" value={form.start_date} onChange={(e) => set("start_date", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>End Date</Label>
-              <Input type="date" value={form.end_date} onChange={(e) => set("end_date", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Schedule</Label>
-              <Input value={form.schedule} onChange={(e) => set("schedule", e.target.value)} placeholder="e.g. Mon, Wed, Fri 9am-3pm" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Media & Tags</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Image URL</Label>
-              <Input value={form.image_url} onChange={(e) => set("image_url", e.target.value)} placeholder="https://..." />
-            </div>
-            <div className="space-y-2">
-              <Label>Tags</Label>
-              <div className="flex gap-2">
-                <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())} placeholder="Add tag..." />
-                <Button type="button" onClick={addTag} variant="outline"><Plus className="h-4 w-4" /></Button>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Price (Rs) *</Label>
+                <Input type="number" min="0" step="500" value={form.price} onChange={e => set("price", e.target.value)} required />
               </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {form.tags.map((tag) => (
-                  <span key={tag} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                    {tag}
-                    <button type="button" onClick={() => set("tags", form.tags.filter((t) => t !== tag))}><X className="h-3 w-3" /></button>
-                  </span>
-                ))}
+              <div className="space-y-2">
+                <Label>Original Price (Rs)</Label>
+                <Input type="number" min="0" step="500" value={form.original_price} onChange={e => set("original_price", e.target.value)} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Syllabus</Label>
-              <div className="flex gap-2">
-                <Input value={syllabusInput} onChange={(e) => setSyllabusInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSyllabus())} placeholder="Add syllabus item..." />
-                <Button type="button" onClick={addSyllabus} variant="outline"><Plus className="h-4 w-4" /></Button>
-              </div>
-              <ol className="space-y-1 mt-2">
-                {form.syllabus.map((item, i) => (
-                  <li key={i} className="flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded text-sm">
-                    <span>{i + 1}. {item}</span>
-                    <button type="button" onClick={() => set("syllabus", form.syllabus.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500"><X className="h-3 w-3" /></button>
-                  </li>
-                ))}
-              </ol>
+              <Label>Short Description</Label>
+              <Input placeholder="One-line summary" value={form.short_description} onChange={e => set("short_description", e.target.value)} />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Settings</CardTitle></CardHeader>
-          <CardContent className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.is_active} onChange={(e) => set("is_active", e.target.checked)} className="w-4 h-4 rounded" />
-              <span className="text-sm font-medium">Active (visible on website)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.is_featured} onChange={(e) => set("is_featured", e.target.checked)} className="w-4 h-4 rounded" />
-              <span className="text-sm font-medium">Featured (shown on homepage)</span>
-            </label>
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" asChild><Link href="/admin/courses">Cancel</Link></Button>
-          <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-            {isLoading ? "Creating..." : "Create Course"}
-          </Button>
-        </div>
-      </form>
+            <div className="space-y-2">
+              <Label>Description *</Label>
+              <Textarea placeholder="Full course description..." value={form.description} onChange={e => set("description", e.target.value)} rows={4} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Tags (comma separated)</Label>
+              <Input placeholder="BIM, Revit, Navisworks" value={form.tags} onChange={e => set("tags", e.target.value)} />
+            </div>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={form.is_active} onChange={e => set("is_active", e.target.checked)} />
+                Active
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={form.is_featured} onChange={e => set("is_featured", e.target.checked)} />
+                Featured
+              </label>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={isLoading}>{isLoading ? "Creating..." : "Create Course"}</Button>
+              <Button type="button" variant="outline" onClick={() => router.push("/admin/courses")}>Cancel</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }
