@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { BookOpen, Search, Plus } from "lucide-react"
 import { getCourses, deleteCourse } from "@/lib/data"
+import { confirmDialog } from "@/components/ui/global-confirm-dialog"
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<any[]>([])
@@ -32,7 +33,7 @@ export default function CoursesPage() {
   }, [search, courses])
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this course? This cannot be undone.")) return
+    if (!(await confirmDialog("Delete this course? This cannot be undone."))) return
     await deleteCourse(id)
     setCourses(prev => prev.filter(c => c.id !== id))
   }
@@ -47,7 +48,7 @@ export default function CoursesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Courses</h1>
-          <p className="text-gray-600 mt-1">Manage CADD programmes — BIM, CAD, Project Management</p>
+          <p className="text-gray-600 mt-1">Manage CADD programmes - BIM, CAD, Project Management</p>
         </div>
         <Button asChild>
           <Link href="/admin/courses/new"><Plus className="h-4 w-4 mr-2" /> New Course</Link>

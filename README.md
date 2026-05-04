@@ -1,103 +1,147 @@
-# ASMS — Academic & Student Management System
-### CADD Centre Lanka
+# CADD Centre Lanka — Unified Management System
 
-A centralized system for managing the full student lifecycle at CADD Centre Lanka, built with Next.js 14 (App Router) and Supabase.
-
----
-
-## 🎯 System Overview
-
-Aligned to the **CADD Centre Lanka SRD** — covers:
-
-| Module | Description |
-|---|---|
-| Student Management | Registration, profiles, student ID generation |
-| Course & Program Management | BIM / CAD / PM courses with Proficient / Master / Expert levels |
-| Module Management | Sub-modules per course (Revit Architecture, MEP, Navisworks, etc.) |
-| Batch & Scheduling | Batch creation, timetable, classroom / online / hybrid modes |
-| Trainer Management | Trainer profiles, allocation to batches/modules |
-| Enrollment | Student enrollment with batch allocation + payment tracking |
-| Attendance | Daily attendance marking (present/absent/late/excused) |
-| Academic Progress | Module-wise progress tracking, practical + theory scoring |
-| Assessments & Exams | Module tests, practicals, final project evaluations |
-| Certification | Auto certificate generation with QR code + unique cert number |
-| Learning Resources | E-books, video tutorials, BIM practice guides per module |
-| Student Portal | View progress, attendance, results, certificates, resources |
-| Reports | Enrollment, attendance, course-wise performance, certification |
+A single Next.js 15 application combining:
+- **ASMS** — Academic & Student Management System (student-facing portal + academic admin)
+- **IMS** — Institute Management System (operations, marketing, finance, HR)
 
 ---
 
-## 👥 User Roles
+## Architecture Overview
 
-| Role | Access |
-|---|---|
-| `admin` | Full system control |
-| `academic_manager` | Courses, batches, trainers |
-| `trainer` | Attendance, progress marking |
-| `student` | Student portal (own data only) |
-| `coordinator` | Enrollment, scheduling |
-
----
-
-## 🏗️ Course Structure
-
-CADD programmes follow 3 certificate levels:
-
-- **Proficient Certificate** — ~80 hours
-- **Master Certificate** — ~160 hours
-- **Expert Certificate** — ~240 hours
-
-### BIM Programme (148h — Master Certificate)
-Modules:
-1. Revit Architecture (40h) — 3D Modeling, Views, Families, Rendering
-2. Revit MEP (40h) — HVAC, Plumbing, Electrical, Quantity take-off
-3. Navisworks (35h) — Clash detection, 4D simulation, Coordination
-4. Project Management (33h) — Scheduling, Resource planning, WBS
-
----
-
-## 🗄️ Database Setup
-
-1. Go to your [Supabase project](https://supabase.com) → SQL Editor
-2. Run `SUPABASE_SCHEMA.sql` (fresh install), **or**
-3. Run `MIGRATION_PHASE1.sql` (upgrading from scholar-sync)
-
----
-
-## ⚙️ Environment
-
-Copy `.env.local` and set:
 ```
-NEXT_PUBLIC_SUPABASE_URL=your_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+cadd-centre-unified/
+├── app/
+│   ├── (main)/              # Student-facing public site
+│   │   ├── page.tsx         # Landing page
+│   │   ├── dashboard/       # Student portal
+│   │   ├── courses/         # Course catalogue
+│   │   ├── my-courses/      # Enrolled courses
+│   │   ├── my-attendance/   # Attendance tracker
+│   │   ├── my-progress/     # Module progress
+│   │   ├── my-results/      # Exam results
+│   │   ├── my-certificates/ # Certificates
+│   │   ├── resources/       # Learning materials
+│   │   └── verify/[id]/     # Certificate QR verification
+│   │
+│   ├── admin/               # ASMS Admin (admin/academic_manager roles)
+│   │   ├── students/        # Student management
+│   │   ├── courses/         # Course CRUD
+│   │   ├── modules/         # Module management
+│   │   ├── batches/         # Batch scheduling
+│   │   ├── trainers/        # Trainer management
+│   │   ├── enrollments/     # Enrollment management
+│   │   ├── attendance/      # Attendance marking
+│   │   ├── assessments/     # Exam management
+│   │   ├── certificates/    # Certificate generation
+│   │   ├── resources/       # Resource library
+│   │   ├── leads/           # Student leads (ASMS)
+│   │   ├── reports/         # Academic reports
+│   │   └── ims/             # ← IMS NESTED SECTION
+│   │       ├── page.tsx     # IMS overview
+│   │       ├── marketing/   # Leads pipeline & campaigns
+│   │       ├── academic/    # IMS-side academic ops
+│   │       ├── finance/     # Payments, invoices, expenses
+│   │       ├── hr/          # Leaves, salary, performance
+│   │       ├── users/       # Staff user management
+│   │       ├── tasks/       # Cross-dept shared tasks
+│   │       ├── roster/      # Duty/shift scheduling
+│   │       └── control-panel/ # System commands (super admin)
+│   │
+│   └── auth/
+│       ├── login/
+│       └── register/
+│
+├── components/
+│   ├── layout/
+│   │   ├── admin-sidebar.tsx  # Unified sidebar (ASMS + IMS sections)
+│   │   ├── navbar.tsx
+│   │   └── footer.tsx
+│   └── ui/                    # shadcn/ui components
+│
+├── lib/
+│   ├── auth.ts                # Supabase auth (unified roles)
+│   ├── data.ts                # ASMS data layer
+│   ├── ims-data.ts            # IMS data layer (replaces Firebase)
+│   ├── supabase.ts            # Browser client
+│   └── supabase-server.ts     # Server client
+│
+├── types/
+│   └── index.ts               # All types (ASMS + IMS)
+│
+├── DB_UNIFIED_SCHEMA.sql      # ← Run this first
+└── DB_IMS_ACADEMIC_MIGRATION.sql # ← Run this second
 ```
 
 ---
 
-## 🚀 Running
+## User Roles & Access
+
+| Role | Area | Access |
+|------|------|--------|
+| `admin` / `super_admin` | Both ASMS + IMS | Full control |
+| `branch_manager` | Both ASMS + IMS | View all + reports |
+| `academic_manager` | ASMS Admin | Courses, batches, trainers |
+| `trainer` | ASMS Admin | Attendance, progress |
+| `coordinator` | ASMS Admin | Enrollment, scheduling |
+| `marketing_staff` | IMS → Marketing | Leads & campaigns |
+| `academic_staff` | IMS → Academic | Students, courses, batches |
+| `finance_officer` | IMS → Finance | Payments, invoices |
+| `hr_officer` | IMS → HR | Staff, leaves, salary |
+| `staff` | IMS → Tasks/Roster | Shared tasks only |
+| `student` | Student Portal | Own data only |
+
+---
+
+## Quick Start
 
 ```bash
+# 1. Install dependencies
 npm install
+
+# 2. .env.local is already included with Project 1's real Supabase keys.
+#    No configuration needed.
+
+# 3. Add IMS tables to the live Project 1 database (ONE-TIME, safe)
+#    Go to: https://supabase.com/dashboard/project/srpigxhvwmirvlouxxxa/sql/new
+#    Paste the contents of DB_IMS_ADDON.sql → click Run
+#    This NEVER drops or touches any existing ASMS data.
+
+# 4. Start the dev server
 npm run dev
 ```
 
-Admin panel: `/admin`  
-Student portal: `/dashboard`
+Visit `http://localhost:3000`
+
+> **Your existing Project 1 data** (students, courses, batches, enrollments, etc.)
+> loads immediately — no migration needed, same database, same keys.
 
 ---
 
-## 🔑 First Admin
+## Database
 
-After signing up, run in Supabase SQL Editor:
-```sql
-UPDATE public.profiles SET role = 'admin' WHERE email = 'your@email.com';
-```
+Single Supabase (PostgreSQL) instance with:
+- **ASMS tables**: `profiles`, `courses`, `modules`, `batches`, `enrollments`, `attendance`, `assessments`, `certificates`, `learning_resources`, `events`
+- **IMS tables**: `marketing_leads`, `marketing_campaigns`, `ims_payments`, `ims_invoices`, `ims_expenses`, `hr_leave_requests`, `hr_salary_payouts`, `hr_performance_reviews`, `hr_roster`, `ops_tasks`, `ops_minute_trackers`, `ims_login_history`, `ims_system_commands`
+- **Row Level Security** on all tables
+- **Realtime subscriptions** for marketing leads and tasks
 
 ---
 
-## 📋 Student Lifecycle Flow
+## Firebase Migration
 
-```
-Registration → Enrollment → Batch Allocation → Module Learning
-    → Attendance Tracking → Assessment → Certification
-```
+Firebase data has been exported to CSV files in `project_2_datastore_firebase.zip`. See `DB_IMS_ACADEMIC_MIGRATION.sql` for the complete migration guide.
+
+---
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router, Turbopack)
+- **Database**: Supabase (PostgreSQL + Auth + Storage + Realtime)
+- **Styling**: Tailwind CSS v4
+- **UI Components**: shadcn/ui (Radix UI primitives)
+- **Charts**: Recharts
+- **Forms**: React Hook Form + Zod
+- **PDF**: jsPDF
+- **Excel**: xlsx
+- **Animations**: Framer Motion
+- **Notifications**: Sonner

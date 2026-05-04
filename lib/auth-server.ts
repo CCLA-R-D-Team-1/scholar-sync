@@ -4,8 +4,8 @@ import type { CookieOptions } from '@supabase/ssr'
 import type { AuthUser } from './auth'
 import type { UserRole } from '@/types'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy'
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions }
 
@@ -44,6 +44,7 @@ export async function getServerCurrentUser(): Promise<AuthUser | null> {
       name: profile?.full_name || user.user_metadata?.full_name || user.email!,
       email: user.email!,
       role: (profile?.role as UserRole) || 'student',
+      permissions: [],
     }
   } catch (err) {
     console.error('getServerCurrentUser error:', err)

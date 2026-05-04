@@ -1,4 +1,4 @@
-# Scholar Sync — Setup Guide
+# CADD Centre Lanka — Setup Guide
 
 ## Prerequisites
 - Node.js 18+

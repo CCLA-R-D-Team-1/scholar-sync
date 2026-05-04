@@ -12,9 +12,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
-import { getCurrentUser, signOut } from "@/lib/auth"
+import { getCurrentUser, signOut, getDefaultRoute } from "@/lib/auth"
 import type { AuthUser } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
+import { Avatar } from "@/components/ims/ProfileSection"
 
 const navigation = [
   { name: "Home",     href: "/" },
@@ -26,14 +27,26 @@ const navigation = [
 export function Navbar() {
   const [isOpen, setIsOpen]       = useState(false)
   const [user, setUser]           = useState<AuthUser | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
   const router   = useRouter()
 
   useEffect(() => {
-    getCurrentUser().then(setUser)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      getCurrentUser().then(setUser)
+    // onAuthStateChange fires immediately with INITIAL_SESSION - no need for a separate getCurrentUser() call
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        getCurrentUser().then(u => {
+          setUser(u)
+          if (u) {
+            supabase.from("profiles").select("avatar_url").eq("id", session.user.id).single()
+              .then(({ data }) => setAvatarUrl(data?.avatar_url ?? null))
+          }
+        })
+      } else {
+        setUser(null)
+        setAvatarUrl(null)
+      }
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -50,27 +63,23 @@ export function Navbar() {
     router.push("/")
   }
 
-  const isAdminUser = user && ["admin", "academic_manager", "coordinator"].includes(user.role)
+  const NON_STUDENT_ROLES = ["admin","super_admin","branch_manager","academic_manager","coordinator","trainer","marketing_staff","academic_staff","finance_officer","hr_officer","staff"]
+  const isAdminUser = user && NON_STUDENT_ROLES.includes(user.role)
+  const adminRoute = user ? getDefaultRoute(user.role) : "/admin"
+
+  const isPortalPage = pathname.startsWith('/dashboard') || pathname.startsWith('/profile') || pathname.startsWith('/my-') || pathname.startsWith('/resources')
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled ? "bg-white/95 backdrop-blur-sm shadow-md border-b border-gray-100" : "bg-transparent"
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      isScrolled
+        ? "bg-white/80 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-b border-white/20"
+        : "bg-white/50 backdrop-blur-md border-b border-white/10"
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className={`flex items-center justify-between transition-all duration-500 ${isScrolled ? "h-16" : "h-20"}`}>
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg flex items-center justify-center">
-              <GraduationCap className="h-4 w-4 text-white" />
-            </div>
-            <div className="hidden sm:block">
-              <span className={`font-bold text-sm leading-none ${isScrolled ? "text-gray-900" : "text-white"}`}>
-                CADD Centre Lanka
-              </span>
-              <p className={`text-xs leading-none mt-0.5 ${isScrolled ? "text-gray-500" : "text-blue-200"}`}>
-                ASMS
-              </p>
-            </div>
+          <Link href="/" className="flex items-center gap-2.5">
+            <img src="/cadd-logo.png" alt="CADD Centre Logo" className="h-8 w-auto object-contain" />
           </Link>
 
           {/* Desktop nav */}
@@ -79,10 +88,10 @@ export function Navbar() {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                   pathname === item.href
-                    ? isScrolled ? "bg-blue-50 text-blue-700" : "bg-white/10 text-white"
-                    : isScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white/80 hover:text-white hover:bg-white/10"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
                 {item.name}
@@ -97,10 +106,10 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className={`flex items-center gap-2 ${isScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/10"}`}
+                    className="flex items-center gap-2 text-gray-700 hover:bg-gray-100"
                   >
-                    <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
-                      <User className="h-3.5 w-3.5 text-white" />
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-blue-100">
+                      <Avatar photoURL={avatarUrl} name={user.name ?? ""} size="sm" className="w-full h-full" />
                     </div>
                     <span className="text-sm font-medium max-w-[120px] truncate">{user.name?.split(" ")[0]}</span>
                     <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -134,7 +143,7 @@ export function Navbar() {
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link href="/admin" className="flex items-center gap-2 text-blue-700">
+                        <Link href={adminRoute} className="flex items-center gap-2 text-blue-700">
                           <LayoutDashboard className="h-4 w-4" /> Admin Panel
                         </Link>
                       </DropdownMenuItem>
@@ -149,10 +158,10 @@ export function Navbar() {
             ) : (
               <>
                 <Button variant="ghost" asChild size="sm"
-                  className={isScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/10"}>
+                  className="text-gray-700 hover:bg-gray-100">
                   <Link href="/auth/login">Sign In</Link>
                 </Button>
-                <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shadow-md">
                   <Link href="/auth/register">Register</Link>
                 </Button>
               </>
@@ -161,7 +170,7 @@ export function Navbar() {
 
           {/* Mobile menu toggle */}
           <button
-            className={`md:hidden p-2 rounded-lg transition-colors ${isScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/10"}`}
+            className="md:hidden p-2 rounded-lg transition-colors text-gray-700 hover:bg-gray-100"
             onClick={() => setIsOpen(!isOpen)}
           >
             {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
