@@ -223,7 +223,7 @@ export function isIMSRole(role: UserRole): boolean {
 }
 
 export function canAccessAdmin(role: UserRole): boolean {
-  return role === 'admin' || isIMSRole(role)
+  return role === 'admin' || role === 'academic_manager' || role === 'trainer' || role === 'coordinator' || isIMSRole(role)
 }
 
 /**
