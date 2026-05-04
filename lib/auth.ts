@@ -42,8 +42,24 @@ export async function signUp(
     if (error) return { user: null, error: error.message }
     if (!data.user) return { user: null, error: 'Registration failed' }
 
+    // Generate student_id for students
+    let student_id: string | null = null
+    if (role === 'student') {
+      const year = new Date().getFullYear()
+      const prefix = `CADDSTU-${year}-`
+      const { data: maxRow } = await supabase
+        .from('profiles')
+        .select('student_id')
+        .like('student_id', `${prefix}%`)
+        .order('student_id', { ascending: false })
+        .limit(1)
+        .single()
+      const lastNum = maxRow?.student_id ? parseInt(maxRow.student_id.split('-')[2], 10) : 0
+      student_id = prefix + String(lastNum + 1).padStart(4, '0')
+    }
+
     await supabase.from('profiles').upsert(
-      { id: data.user.id, email, full_name: fullName, role, is_active: true },
+      { id: data.user.id, email, full_name: fullName, role, is_active: true, ...(student_id ? { student_id } : {}) },
       { onConflict: 'id', ignoreDuplicates: true },
     )
 

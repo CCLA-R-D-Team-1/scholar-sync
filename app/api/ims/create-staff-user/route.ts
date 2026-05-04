@@ -42,7 +42,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User creation failed" }, { status: 500 })
     }
 
-    // Step 2: Upsert profile using service role (bypasses RLS)
+    // Step 2: Generate student_id if role is student
+    let student_id: string | null = null
+    if ((role || 'staff') === 'student') {
+      const year = new Date().getFullYear()
+      const prefix = `CADDSTU-${year}-`
+      const { data: maxRow } = await supabaseAdmin
+        .from('profiles')
+        .select('student_id')
+        .like('student_id', `${prefix}%`)
+        .order('student_id', { ascending: false })
+        .limit(1)
+        .single()
+      const lastNum = maxRow?.student_id ? parseInt(maxRow.student_id.split('-')[2], 10) : 0
+      student_id = prefix + String(lastNum + 1).padStart(4, '0')
+    }
+
+    // Step 3: Upsert profile using service role (bypasses RLS)
     const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
       id: authData.user.id,
       email,
@@ -60,6 +76,7 @@ export async function POST(req: NextRequest) {
       contract_type: contract_type || 'Full-time',
       monthly_salary: monthly_salary || null,
       employee_status: employee_status || 'Active',
+      ...(student_id ? { student_id } : {}),
       is_active: true,
       disabled: false,
     }, { onConflict: "id" })

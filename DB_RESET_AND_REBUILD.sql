@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
                          CHECK (role IN ('admin','academic_manager','trainer','student','coordinator')),
   avatar_url           TEXT,
   -- student fields
-  student_id           TEXT UNIQUE,          -- auto-generated e.g. CADD-2025-0001
+  student_id           TEXT UNIQUE,          -- auto-generated e.g. CADDSTU-2026-0001
   education_background TEXT,
   -- trainer fields
   specialization       TEXT,
@@ -295,10 +295,15 @@ CREATE OR REPLACE FUNCTION generate_student_id()
 RETURNS TEXT AS $$
 DECLARE
   new_id TEXT;
-  counter INTEGER;
+  last_num INTEGER;
+  yr TEXT;
 BEGIN
-  SELECT COUNT(*) + 1 INTO counter FROM public.profiles WHERE role = 'student';
-  new_id := 'CADD-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(counter::TEXT, 4, '0');
+  yr := TO_CHAR(NOW(), 'YYYY');
+  SELECT COALESCE(MAX(CAST(SPLIT_PART(student_id, '-', 3) AS INTEGER)), 0) + 1
+    INTO last_num
+    FROM public.profiles
+    WHERE student_id LIKE 'CADDSTU-' || yr || '-%';
+  new_id := 'CADDSTU-' || yr || '-' || LPAD(last_num::TEXT, 4, '0');
   RETURN new_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -318,16 +323,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ── AUTO-CREATE PROFILE ON SIGNUP ─────────────────────────────
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  new_student_id TEXT;
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role, is_active)
+  new_student_id := generate_student_id();
+  INSERT INTO public.profiles (id, email, full_name, role, student_id, is_active)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
     'student',
+    new_student_id,
     TRUE
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    student_id = COALESCE(public.profiles.student_id, EXCLUDED.student_id);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
