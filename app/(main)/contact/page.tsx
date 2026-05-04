@@ -6,6 +6,8 @@ import { Mail, Phone, MapPin, Send, CheckCircle2, MessageCircle, Clock, ChevronD
 import { Button } from "@/components/ui/button"
 import { FieldError } from "@/components/ui/field-error"
 import { sanitizeName, isValidName, isValidEmail } from "@/lib/validation"
+import { submitContactMessage } from "@/lib/data"
+import { toast } from "sonner"
 
 const fadeIn = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } }
 const stagger = { visible: { transition: { staggerChildren: 0.1 } } }
@@ -53,7 +55,7 @@ export default function ContactPage() {
     setFormState({ ...formState, name: sanitizeName(value) })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Mark all touched
@@ -65,13 +67,22 @@ export default function ContactPage() {
     if (!formState.subject.trim() || !formState.message.trim()) return
 
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      await submitContactMessage({
+        name: formState.name.trim(),
+        email: formState.email.trim(),
+        subject: formState.subject.trim(),
+        message: formState.message.trim(),
+      })
       setIsSuccess(true)
       setTimeout(() => setIsSuccess(false), 5000)
       setFormState({ name: "", email: "", subject: "", message: "" })
       setTouched({})
-    }, 1500)
+    } catch {
+      toast.error("Failed to send message. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const inputBaseClass = "w-full bg-[#F8FAFC] border rounded-2xl px-5 py-4 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 text-[#0F172A]"
