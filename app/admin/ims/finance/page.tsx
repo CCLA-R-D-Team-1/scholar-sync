@@ -4,6 +4,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { LogOut, DollarSign, FileText, TrendingDown, TrendingUp, Plus, Trash2, X, Search, BarChart3, Menu, Download, CreditCard, Receipt, List, Calendar, CalendarDays, Clock, User, Building2, GraduationCap, Megaphone, Users, UserCog, Terminal, ExternalLink } from 'lucide-react';
+
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, CartesianGrid, Legend, Area, AreaChart
+} from "recharts"
 import { QuickGuide, type GuideStep } from "@/components/ui/quick-guide"
 import { hasPermission } from "@/lib/permissions"
 import type { Permission } from "@/lib/permissions"
@@ -11,17 +16,21 @@ import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 import { useRouter } from 'next/navigation';
+import CDMDataTable, { type CDMColumn, type CDMAction } from "@/components/ims/CDMDataTable"
 
 import {
   getImsPayments, createImsPayment, deleteImsPayment,
   getImsInvoices, createImsInvoice, updateImsInvoice, deleteImsInvoice,
   getImsExpenses, createImsExpense, deleteImsExpense,
+  getLeadConfirmations,
 } from "@/lib/ims-data"
 import { getCurrentUser, signOut } from "@/lib/auth"
-import type { ImsPayment, ImsInvoice, ImsExpense, ImsInvoiceItem, Profile } from '@/types';
+import type { ImsPayment, ImsInvoice, ImsExpense, ImsInvoiceItem, Profile, LeadConfirmation } from '@/types';
 import SriLankaCalendar from "@/components/ims/SriLankaCalendar"
 import StaffAttendance from "@/components/ims/StaffAttendance"
 import ProfileSection from "@/components/ims/ProfileSection"
+import LeaveRequestsView from "@/components/ims/LeaveRequestsView"
+import FinanceLeadConfirmationsView from "@/components/ims/finance/LeadConfirmationsView"
 import IMSTasksPage from "../tasks/page"
 import { confirmDialog } from "@/components/ui/global-confirm-dialog"
 
@@ -31,13 +40,14 @@ const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'Online'] as const;
 export default function FinanceDashboard() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('payments');
+  const [activeTab, setActiveTab] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isHead = currentUser?.role === 'admin' || currentUser?.role === 'super_admin' || currentUser?.access_level >= 2;
   const [payments, setPayments] = useState<ImsPayment[]>([]);
   const [invoices, setInvoices] = useState<ImsInvoice[]>([]);
   const [expenses, setExpenses] = useState<ImsExpense[]>([]);
+  const [leadConfirmations, setLeadConfirmations] = useState<LeadConfirmation[]>([]);
   const [showLoadingAnimation, setShowLoadingAnimation] = useState(true);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -61,10 +71,11 @@ export default function FinanceDashboard() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [p, inv, exp, u] = await Promise.all([
+      const [p, inv, exp, u, lc] = await Promise.all([
         getImsPayments(), getImsInvoices(), getImsExpenses(), getCurrentUser(),
+        getLeadConfirmations('marketing_confirmed'),
       ]);
-      setPayments(p); setInvoices(inv); setExpenses(exp); setCurrentUser(u);
+      setPayments(p); setInvoices(inv); setExpenses(exp); setCurrentUser(u); setLeadConfirmations(lc);
     } catch (e: any) { toast.error(e.message) }
     finally { setLoading(false) }
   }, []);
@@ -139,7 +150,7 @@ export default function FinanceDashboard() {
     e.preventDefault();
     if (!paymentForm.student_name.trim() || paymentForm.amount <= 0) return toast.error('Name and amount required');
     try {
-      const created = await createImsPayment({ ...paymentForm, created_by: currentUser?.id });
+      const created = await createImsPayment({ ...paymentForm, created_by: currentUser?.id, lead_id: null, source: 'direct', payment_confirmed: true });
       setPayments(prev => [created, ...prev]);
       if (paymentForm.invoice_id) {
         const inv = invoices.find(i => i.id === paymentForm.invoice_id);
@@ -252,10 +263,14 @@ export default function FinanceDashboard() {
   const netProfit = totalIncome - totalExpenses;
 
 
+  const pendingLeadCount = leadConfirmations.length;
+
   const navSections = [
     {
       label: '💰 Finance',
       items: [
+        { id: 'overview',  label: 'Overview',    icon: Building2,    badge: 0 },
+        { id: 'lead-confirmations', label: 'Lead Verifications', icon: ExternalLink, badge: pendingLeadCount },
         { id: 'payments',  label: 'Payments',    icon: CreditCard,   badge: 0 },
         { id: 'invoices',  label: 'Invoices',    icon: FileText,     badge: 0 },
         { id: 'expenses',  label: 'Expenses',    icon: TrendingDown, badge: 0 },
@@ -266,6 +281,7 @@ export default function FinanceDashboard() {
       label: '📋 My Work',
       items: [
         { id: 'tasks',      label: 'Tasks',         icon: FileText,     badge: 0 },
+        { id: 'leave-requests', label: 'My Leaves', icon: CalendarDays, badge: 0 },
         { id: 'attendance', label: 'My Attendance', icon: Clock,    badge: 0 },
         { id: 'profile',   label: 'My Profile', icon: User,         badge: 0 },
       ]
@@ -417,57 +433,154 @@ export default function FinanceDashboard() {
 
         <main className="flex-1 p-4 md:p-6 min-h-[calc(100vh-80px)] overflow-auto space-y-5 bg-gray-50">
 
-          {/* ── PAYMENTS ── */}
-          {activeTab === 'payments' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex-1 min-w-[180px] relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search payments…"
-                    className="w-full pl-9 pr-3 py-2 bg-gray-50 text-gray-900 placeholder-gray-400 rounded-xl border border-gray-200 focus:outline-none focus:border-blue-500" />
-                </div>
-                <motion.button whileHover={{ scale: 1.05 }} onClick={exportFinance}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl border border-gray-200">
-                  <Download className="w-4 h-4" /> Export
-                </motion.button>
-                <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowPaymentModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-violet-600 text-gray-900 rounded-xl font-semibold">
-                  <Plus className="w-4 h-4" /> Record Payment
-                </motion.button>
+          {/* 📊 OVERVIEW 📊 */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total Revenue', value: `LKR ${totalIncome.toLocaleString()}`, color: 'from-emerald-500 to-cyan-500', icon: TrendingUp },
+                  { label: 'Total Expenses', value: `LKR ${totalExpenses.toLocaleString()}`, color: 'from-rose-500 to-pink-500', icon: TrendingDown },
+                  { label: 'Net Profit', value: `LKR ${netProfit.toLocaleString()}`, color: 'from-blue-500 to-indigo-500', icon: DollarSign },
+                  { label: 'Pending Invoices', value: invoices.filter(i => i.status === 'Unpaid').length, color: 'from-amber-500 to-orange-500', icon: FileText },
+                ].map((card, i) => (
+                  <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+                    className="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center gap-4 group hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all">
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${card.color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}>
+                      <card.icon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">{card.label}</p>
+                      <h3 className="text-2xl font-bold text-gray-900">{card.value}</h3>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-gray-700">
-                    <thead className="bg-gray-100">
-                      <tr>{['Date','Student','Course','Amount','Method','Actions'].map(h => (
-                        <th key={h} className="text-left px-4 py-3 text-gray-500 text-xs uppercase">{h}</th>
-                      ))}</tr>
-                    </thead>
-                    <tbody>
-                      {filteredPayments.map(p => (
-                        <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-100">
-                          <td className="px-4 py-3">{p.date}</td>
-                          <td className="px-4 py-3 font-semibold text-gray-900">{p.student_name} <span className="text-gray-400 font-normal block text-xs">{p.student_id}</span></td>
-                          <td className="px-4 py-3 text-gray-600">{p.course_id}</td>
-                          <td className="px-4 py-3 font-bold text-green-700">LKR {p.amount.toLocaleString()}</td>
-                          <td className="px-4 py-3">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 border border-gray-200 text-gray-700">{p.method}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex gap-2">
-                              <button onClick={() => generateReceiptPDF(p)} className="p-1.5 hover:text-green-700 text-gray-400"><Receipt className="w-4 h-4" /></button>
-                              {isHead && <button onClick={() => handleDeletePayment(p.id, p.invoice_id)} className="p-1.5 hover:text-red-600 text-gray-400"><Trash2 className="w-4 h-4" /></button>}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {filteredPayments.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-gray-400">No payments found</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
+              {/* Charts Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Revenue vs Expenses Chart */}
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                  className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><BarChart3 className="w-5 h-5 text-blue-600" /> Revenue & Expenses</h2>
+                  </div>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={[
+                        { name: 'Jan', income: 4000, expense: 2400 },
+                        { name: 'Feb', income: 3000, expense: 1398 },
+                        { name: 'Mar', income: 2000, expense: 9800 },
+                        { name: 'Apr', income: 2780, expense: 3908 },
+                        { name: 'May', income: 1890, expense: 4800 },
+                        { name: 'Jun', income: 2390, expense: 3800 },
+                        { name: 'Jul', income: totalIncome, expense: totalExpenses },
+                      ]}>
+                        <defs>
+                          <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                          </linearGradient>
+                          <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#F43F5E" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                        <Area type="monotone" dataKey="income" stroke="#10B981" fillOpacity={1} fill="url(#colorIncome)" />
+                        <Area type="monotone" dataKey="expense" stroke="#F43F5E" fillOpacity={1} fill="url(#colorExpense)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </motion.div>
+
+                {/* Expense Categories */}
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                  className="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><PieChart className="w-5 h-5 text-purple-600" /> Expense Breakdown</h2>
+                  </div>
+                  <div className="h-[300px] w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={[
+                          { name: 'Rent', value: 400 },
+                          { name: 'Utilities', value: 300 },
+                          { name: 'Salaries', value: 300 },
+                          { name: 'Marketing', value: 200 }
+                        ]} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
+                          {['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B'].map((color, index) => (
+                            <Cell key={`cell-${index}`} fill={color} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </motion.div>
               </div>
             </div>
+          )}
+
+          {/* ── PAYMENTS ── */}
+          {activeTab === 'payments' && (
+            <CDMDataTable
+              data={payments}
+              columns={[
+                {
+                  key: 'date', label: 'Date', sortable: true,
+                  render: (val: string) => <span className="text-gray-700 font-medium">{val}</span>
+                },
+                {
+                  key: 'student_name', label: 'Student', sortable: true,
+                  render: (val: string, row: any) => (
+                    <div>
+                      <p className="font-bold text-gray-900">{val}</p>
+                      {row.student_id && <p className="text-[10px] text-gray-400">{row.student_id}</p>}
+                    </div>
+                  )
+                },
+                {
+                  key: 'course_id', label: 'Course',
+                  render: (val: string) => <span className="text-gray-600">{val || '—'}</span>
+                },
+                {
+                  key: 'amount', label: 'Amount', sortable: true,
+                  render: (val: number) => <span className="font-bold text-emerald-700">LKR {val.toLocaleString()}</span>
+                },
+                {
+                  key: 'method', label: 'Method',
+                  render: (val: string) => (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 border border-gray-200 text-gray-700">{val}</span>
+                  )
+                },
+              ] as CDMColumn[]}
+              actions={[
+                {
+                  label: 'Receipt', icon: Receipt, variant: 'default',
+                  onClick: (row: any) => generateReceiptPDF(row)
+                },
+                ...(isHead ? [{
+                  label: 'Delete', icon: Trash2, variant: 'danger' as const,
+                  onClick: (row: any) => handleDeletePayment(row.id, row.invoice_id)
+                }] : [])
+              ] as CDMAction[]}
+              title="Payments"
+              icon={CreditCard}
+              searchPlaceholder="Search payments..."
+              exportFileName="Payments_Export"
+              emptyMessage="No payments recorded yet"
+              headerActions={
+                <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowPaymentModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-violet-600 text-white rounded-xl font-semibold text-sm">
+                  <Plus className="w-4 h-4" /> Record Payment
+                </motion.button>
+              }
+            />
           )}
 
           {/* ── INVOICES ── */}
@@ -521,43 +634,46 @@ export default function FinanceDashboard() {
 
           {/* ── EXPENSES ── */}
           {activeTab === 'expenses' && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Expenses</h2>
+            <CDMDataTable
+              data={expenses}
+              columns={[
+                {
+                  key: 'date', label: 'Date', sortable: true,
+                  render: (val: string) => <span className="text-gray-700 font-medium">{val}</span>
+                },
+                {
+                  key: 'category', label: 'Category', sortable: true,
+                  render: (val: string) => (
+                    <span className="px-2 py-1 rounded-md bg-gray-100 text-xs font-semibold border border-gray-200 text-gray-700">{val}</span>
+                  )
+                },
+                {
+                  key: 'amount', label: 'Amount', sortable: true,
+                  render: (val: number) => <span className="font-bold text-red-600">LKR {val.toLocaleString()}</span>
+                },
+                {
+                  key: 'notes', label: 'Notes',
+                  render: (val: string) => <span className="text-gray-500 max-w-[250px] truncate block">{val || '—'}</span>
+                },
+              ] as CDMColumn[]}
+              actions={isHead ? [
+                {
+                  label: 'Delete', icon: Trash2, variant: 'danger' as const,
+                  onClick: (row: any) => handleDeleteExpense(row.id)
+                }
+              ] as CDMAction[] : []}
+              title="Expenses"
+              icon={TrendingDown}
+              searchPlaceholder="Search expenses..."
+              exportFileName="Expenses_Export"
+              emptyMessage="No expenses logged yet"
+              headerActions={
                 <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowExpenseModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-gray-900 rounded-xl font-semibold">
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-semibold text-sm">
                   <Plus className="w-4 h-4" /> Log Expense
                 </motion.button>
-              </div>
-
-              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-gray-700 whitespace-nowrap md:whitespace-normal">
-                    <thead className="bg-gray-100">
-                      <tr>{['Date','Category','Amount','Notes','Actions'].map(h => (
-                        <th key={h} className="text-left px-4 py-3 text-gray-500 text-xs uppercase">{h}</th>
-                      ))}</tr>
-                    </thead>
-                    <tbody>
-                      {expenses.map(e => (
-                        <tr key={e.id} className="border-t border-gray-100 hover:bg-gray-100">
-                          <td className="px-4 py-3 text-gray-600">{e.date}</td>
-                          <td className="px-4 py-3 font-semibold text-gray-900">
-                            <span className="px-2 py-1 rounded-md bg-gray-100 text-xs border border-gray-200">{e.category}</span>
-                          </td>
-                          <td className="px-4 py-3 font-bold text-red-600">LKR {e.amount.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-gray-500">{e.notes}</td>
-                          <td className="px-4 py-3">
-                            {isHead && <button onClick={() => handleDeleteExpense(e.id)} className="p-1.5 hover:text-red-600 text-gray-400"><Trash2 className="w-4 h-4" /></button>}
-                          </td>
-                        </tr>
-                      ))}
-                      {expenses.length === 0 && <tr><td colSpan={5} className="text-center py-12 text-gray-400">No expenses logged yet.</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+              }
+            />
           )}
 
           {/* ── REPORTS ── */}
@@ -590,7 +706,13 @@ export default function FinanceDashboard() {
             </div>
           )}
 
+          {/* ── LEAD CONFIRMATIONS ── */}
+          {activeTab === 'lead-confirmations' && (
+            <FinanceLeadConfirmationsView currentUser={currentUser} onRefresh={loadData} />
+          )}
+
           {activeTab === 'calendar' && <SriLankaCalendar accentColor="blue" />}
+          {activeTab === 'leave-requests' && <LeaveRequestsView />}
           {activeTab === 'attendance' && (
             <div className="bg-white border border-gray-200 p-6 rounded-2xl border border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-4">My Attendance</h2>

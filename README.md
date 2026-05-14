@@ -1,4 +1,4 @@
-# CADD Centre Lanka — Unified Management System
+# Scholar Sync — Unified Management System
 
 A single Next.js 15 application combining:
 - **ASMS** — Academic & Student Management System (student-facing portal + academic admin)
@@ -9,7 +9,7 @@ A single Next.js 15 application combining:
 ## Architecture Overview
 
 ```
-cadd-centre-unified/
+scholar-sync/
 ├── app/
 │   ├── (main)/              # Student-facing public site
 │   │   ├── page.tsx         # Landing page
@@ -28,7 +28,7 @@ cadd-centre-unified/
 │   │   ├── courses/         # Course CRUD
 │   │   ├── modules/         # Module management
 │   │   ├── batches/         # Batch scheduling
-│   │   ├── trainers/        # Trainer management
+│   │   ├── lecturers/       # Lecturer management
 │   │   ├── enrollments/     # Enrollment management
 │   │   ├── attendance/      # Attendance marking
 │   │   ├── assessments/     # Exam management
@@ -61,15 +61,14 @@ cadd-centre-unified/
 ├── lib/
 │   ├── auth.ts                # Supabase auth (unified roles)
 │   ├── data.ts                # ASMS data layer
-│   ├── ims-data.ts            # IMS data layer (replaces Firebase)
+│   ├── ims-data.ts            # IMS data layer 
 │   ├── supabase.ts            # Browser client
 │   └── supabase-server.ts     # Server client
 │
 ├── types/
 │   └── index.ts               # All types (ASMS + IMS)
 │
-├── DB_UNIFIED_SCHEMA.sql      # ← Run this first
-└── DB_IMS_ACADEMIC_MIGRATION.sql # ← Run this second
+└── DB_MASTER_SETUP.sql        # ← ⚠️ RUN THIS TO SETUP THE DATABASE
 ```
 
 ---
@@ -80,8 +79,8 @@ cadd-centre-unified/
 |------|------|--------|
 | `admin` / `super_admin` | Both ASMS + IMS | Full control |
 | `branch_manager` | Both ASMS + IMS | View all + reports |
-| `academic_manager` | ASMS Admin | Courses, batches, trainers |
-| `trainer` | ASMS Admin | Attendance, progress |
+| `academic_manager` | ASMS Admin | Courses, batches, lecturers |
+| `lecturer` | ASMS Admin | Attendance, progress |
 | `coordinator` | ASMS Admin | Enrollment, scheduling |
 | `marketing_staff` | IMS → Marketing | Leads & campaigns |
 | `academic_staff` | IMS → Academic | Students, courses, batches |
@@ -98,13 +97,14 @@ cadd-centre-unified/
 # 1. Install dependencies
 npm install
 
-# 2. .env.local is already included with Project 1's real Supabase keys.
-#    No configuration needed.
+# 2. Database Setup
+#    Go to your Supabase project dashboard -> SQL Editor
+#    Paste the ENTIRE contents of DB_MASTER_SETUP.sql and click "Run"
+#    This sets up all tables, RLS policies, and triggers for both ASMS and IMS.
+#    WARNING: This will drop and recreate all public tables.
 
-# 3. Add IMS tables to the live Project 1 database (ONE-TIME, safe)
-#    Go to: https://supabase.com/dashboard/project/srpigxhvwmirvlouxxxa/sql/new
-#    Paste the contents of DB_IMS_ADDON.sql → click Run
-#    This NEVER drops or touches any existing ASMS data.
+# 3. .env.local setup
+#    Ensure your .env.local file has your Supabase URL and Anon Key.
 
 # 4. Start the dev server
 npm run dev
@@ -112,24 +112,16 @@ npm run dev
 
 Visit `http://localhost:3000`
 
-> **Your existing Project 1 data** (students, courses, batches, enrollments, etc.)
-> loads immediately — no migration needed, same database, same keys.
-
 ---
 
-## Database
+## Database Schema Highlights
 
-Single Supabase (PostgreSQL) instance with:
-- **ASMS tables**: `profiles`, `courses`, `modules`, `batches`, `enrollments`, `attendance`, `assessments`, `certificates`, `learning_resources`, `events`
-- **IMS tables**: `marketing_leads`, `marketing_campaigns`, `ims_payments`, `ims_invoices`, `ims_expenses`, `hr_leave_requests`, `hr_salary_payouts`, `hr_performance_reviews`, `hr_roster`, `ops_tasks`, `ops_minute_trackers`, `ims_login_history`, `ims_system_commands`
-- **Row Level Security** on all tables
-- **Realtime subscriptions** for marketing leads and tasks
+The database is built on a unified **Supabase (PostgreSQL)** instance.
+Instead of fragmented tables, everything centers around the `profiles` table which uses a JSONB `permissions` column alongside explicit roles.
 
----
-
-## Firebase Migration
-
-Firebase data has been exported to CSV files in `project_2_datastore_firebase.zip`. See `DB_IMS_ACADEMIC_MIGRATION.sql` for the complete migration guide.
+- **ASMS tables**: `profiles`, `courses`, `modules`, `batches`, `enrollments`, `attendance`, `assessments`, `certificates`, `learning_resources`, `events`, `lecturer_allocations`
+- **IMS tables**: `marketing_leads`, `marketing_campaigns`, `ims_payments`, `ims_invoices`, `ims_expenses`, `hr_leave_requests`, `hr_salary_payouts`, `hr_performance_reviews`, `hr_roster`, `ops_tasks`, `ops_minute_trackers`, `ims_login_history`, `ims_system_commands`, `lead_confirmations`
+- **Security**: Strict **Row Level Security (RLS)** is enabled on all tables, ensuring data separation between students, lecturers, and various admin departments.
 
 ---
 
@@ -141,7 +133,5 @@ Firebase data has been exported to CSV files in `project_2_datastore_firebase.zi
 - **UI Components**: shadcn/ui (Radix UI primitives)
 - **Charts**: Recharts
 - **Forms**: React Hook Form + Zod
-- **PDF**: jsPDF
-- **Excel**: xlsx
 - **Animations**: Framer Motion
 - **Notifications**: Sonner

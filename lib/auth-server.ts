@@ -37,15 +37,31 @@ export async function getServerCurrentUser(): Promise<AuthUser | null> {
     } = await supabase.auth.getUser()
     if (error || !user) return null
 
+    // Try profiles first (staff)
     const { data: profile } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).single()
-
-    return {
-      id: user.id,
-      name: profile?.full_name || user.user_metadata?.full_name || user.email!,
-      email: user.email!,
-      role: (profile?.role as UserRole) || 'student',
-      permissions: [],
+    if (profile) {
+      return {
+        id: user.id,
+        name: profile.full_name || user.user_metadata?.full_name || user.email!,
+        email: user.email!,
+        role: (profile.role as UserRole) || 'staff',
+        permissions: [],
+      }
     }
+
+    // Fallback to students table
+    const { data: student } = await supabase.from('students').select('full_name, student_id').eq('id', user.id).single()
+    if (student) {
+      return {
+        id: user.id,
+        name: student.full_name || user.user_metadata?.full_name || user.email!,
+        email: user.email!,
+        role: 'student' as UserRole,
+        permissions: [],
+      }
+    }
+
+    return null
   } catch (err) {
     console.error('getServerCurrentUser error:', err)
     return null

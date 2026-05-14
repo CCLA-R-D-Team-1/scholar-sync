@@ -42,25 +42,9 @@ export async function signUp(
     if (error) return { user: null, error: error.message }
     if (!data.user) return { user: null, error: 'Registration failed' }
 
-    // Generate student_id for students
-    let student_id: string | null = null
-    if (role === 'student') {
-      const year = new Date().getFullYear()
-      const prefix = `CADDSTU-${year}-`
-      const { data: maxRow } = await supabase
-        .from('profiles')
-        .select('student_id')
-        .like('student_id', `${prefix}%`)
-        .order('student_id', { ascending: false })
-        .limit(1)
-        .single()
-      const lastNum = maxRow?.student_id ? parseInt(maxRow.student_id.split('-')[2], 10) : 0
-      student_id = prefix + String(lastNum + 1).padStart(4, '0')
-    }
-
     await supabase.from('profiles').upsert(
-      { id: data.user.id, email, full_name: fullName, role, is_active: true, ...(student_id ? { student_id } : {}) },
-      { onConflict: 'id', ignoreDuplicates: true },
+      { id: data.user.id, email, full_name: fullName, role, is_active: true, disabled: false },
+      { onConflict: 'id', ignoreDuplicates: false },
     )
 
     return { user: { id: data.user.id, name: fullName, email, role, permissions: [] }, error: null }
@@ -87,83 +71,113 @@ export async function signIn(
     }
     if (!data.user) return { user: null, error: 'Login failed' }
 
-    // Fetch basic profile first (always exists)
+    // First, check the PROFILES table (staff members)
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, role, position, department, access_level, disabled, created_at, last_active')
       .eq('id', data.user.id)
       .single()
 
-    if (profile?.disabled) {
-      await supabase.auth.signOut()
-      return { user: null, error: 'Your account has been disabled. Contact an administrator.' }
+    // If found in profiles → staff member
+    if (profile) {
+      if (profile.disabled) {
+        await supabase.auth.signOut()
+        return { user: null, error: 'Your account has been disabled. Contact an administrator.' }
+      }
+
+      // Try to fetch permissions
+      let permissions: Permission[] = []
+      let task_delete_permission = false
+      const { data: extProfile, error: permError } = await supabase
+        .from('profiles')
+        .select('permissions, task_delete_permission')
+        .eq('id', data.user.id)
+        .single()
+      if (!permError && extProfile) {
+        permissions = (extProfile.permissions as Permission[]) || []
+        task_delete_permission = extProfile.task_delete_permission || false
+      }
+
+      // Log login history for IMS users (fire and forget)
+      const imsRoles = ['admin','super_admin','academic_head','academic_officer','finance_head','finance_officer','marketing_head','marketing_officer','hr_head','hr_officer','staff','lecturer']
+      if (imsRoles.includes(profile.role)) {
+        let ipAddress: string | null = null
+        try {
+          const ipRes = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) })
+          if (ipRes.ok) {
+            const ipData = await ipRes.json()
+            ipAddress = ipData.ip || null
+          }
+        } catch { /* IP lookup failed */ }
+
+        supabase.from('ims_login_history').insert({
+          user_id: data.user.id,
+          user_name: profile.full_name,
+          email: data.user.email,
+          ip_address: ipAddress,
+          device_info: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        }).then(res => { if (res.error) console.error(res.error) })
+      }
+
+      // Update last_active
+      supabase.from('profiles').update({ last_active: new Date().toISOString() }).eq('id', data.user.id).then(res => { if (res.error) console.error(res.error) })
+
+      return {
+        user: {
+          id: data.user.id,
+          name: profile.full_name || email,
+          email: data.user.email!,
+          role: (profile.role as UserRole) || 'staff',
+          position: profile.position,
+          department: profile.department,
+          access_level: profile.access_level,
+          disabled: profile.disabled,
+          permissions,
+          task_delete_permission,
+          created_at: profile.created_at,
+          last_active: profile.last_active,
+        },
+        error: null,
+      }
     }
 
-    // Try to fetch permissions columns (may not exist if migrations not run yet)
-    let permissions: Permission[] = []
-    let task_delete_permission = false
-    const { data: extProfile, error: permError } = await supabase
-      .from('profiles')
-      .select('permissions, task_delete_permission')
+    // Not in profiles → check STUDENTS table
+    const { data: student } = await supabase
+      .from('students')
+      .select('full_name, student_id, academic_email, disabled, status, created_at, last_active')
       .eq('id', data.user.id)
       .single()
-    if (!permError && extProfile) {
-      permissions = (extProfile.permissions as Permission[]) || []
-      task_delete_permission = extProfile.task_delete_permission || false
+
+    if (student) {
+      if (student.disabled) {
+        await supabase.auth.signOut()
+        return { user: null, error: 'Your account has been disabled. Contact an administrator.' }
+      }
+
+      // Update last_active on students table
+      supabase.from('students').update({ last_active: new Date().toISOString() }).eq('id', data.user.id).then(res => { if (res.error) console.error(res.error) })
+
+      return {
+        user: {
+          id: data.user.id,
+          name: student.full_name || email,
+          email: data.user.email!,
+          role: 'student' as UserRole,
+          permissions: [],
+          created_at: student.created_at,
+          last_active: student.last_active,
+        },
+        error: null,
+      }
     }
 
-    // Log login history for IMS users (fire and forget)
-    const imsRoles = ['admin','super_admin','branch_manager','marketing_staff','academic_staff','finance_officer','hr_officer','staff']
-    if (profile && imsRoles.includes(profile.role)) {
-      // Fetch public IP address
-      let ipAddress: string | null = null
-      try {
-        const ipRes = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) })
-        if (ipRes.ok) {
-          const ipData = await ipRes.json()
-          ipAddress = ipData.ip || null
-        }
-      } catch { /* IP lookup failed, continue without it */ }
+    // Not found in either table → create a basic student record
+    await supabase.from('students').upsert(
+      { id: data.user.id, email: data.user.email!, full_name: data.user.user_metadata?.full_name || email, is_active: true },
+      { onConflict: 'id', ignoreDuplicates: false },
+    )
 
-      supabase.from('ims_login_history').insert({
-        user_id: data.user.id,
-        user_name: profile.full_name,
-        email: data.user.email,
-        ip_address: ipAddress,
-        device_info: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-      }).then(res => { if (res.error) console.error(res.error) })
-    }
-
-    // Update last_active (fire and forget)
-    supabase.from('profiles').update({ last_active: new Date().toISOString() }).eq('id', data.user.id).then(res => { if (res.error) console.error(res.error) })
-
-    if (!profile) {
-      await supabase.from('profiles').upsert(
-        { id: data.user.id, email: data.user.email!, full_name: data.user.user_metadata?.full_name || email, role: 'student', is_active: true },
-        { onConflict: 'id', ignoreDuplicates: false },
-      )
-      // Intentionally ignoring error for basic upsert failure
-
-      return { user: { id: data.user.id, name: data.user.user_metadata?.full_name || email, email: data.user.email!, role: 'student', permissions: [] }, error: null }
-    }
-
-    return {
-      user: {
-        id: data.user.id,
-        name: profile.full_name || email,
-        email: data.user.email!,
-        role: (profile.role as UserRole) || 'student',
-        position: profile.position,
-        department: profile.department,
-        access_level: profile.access_level,
-        disabled: profile.disabled,
-        permissions,
-        task_delete_permission,
-        created_at: profile.created_at,
-        last_active: profile.last_active,
-      },
-      error: null,
-    }
+    return { user: { id: data.user.id, name: data.user.user_metadata?.full_name || email, email: data.user.email!, role: 'student', permissions: [] }, error: null }
   } catch (err) {
     console.error('signIn unexpected error:', err)
     return { user: null, error: 'An unexpected error occurred' }
@@ -177,46 +191,69 @@ export async function signOut(): Promise<void> {
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const supabase = getClient()
-    // Use getSession() instead of getUser() - reads from localStorage, no browser lock
     const { data: { session } } = await supabase.auth.getSession()
     const user = session?.user
     if (!user) return null
 
-    // Fetch basic profile
+    // Try profiles first (staff)
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, role, position, department, access_level, disabled, created_at, last_active')
       .eq('id', user.id)
       .single()
 
-    if (profile?.disabled) return null
+    if (profile) {
+      if (profile.disabled) return null
 
-    // Try permissions columns (may not exist if migrations not run)
-    let permissions: Permission[] = []
-    let task_delete_permission = false
-    const { data: extProfile, error: permError } = await supabase
-      .from('profiles')
-      .select('permissions, task_delete_permission')
+      let permissions: Permission[] = []
+      let task_delete_permission = false
+      const { data: extProfile, error: permError } = await supabase
+        .from('profiles')
+        .select('permissions, task_delete_permission')
+        .eq('id', user.id)
+        .single()
+      if (!permError && extProfile) {
+        permissions = (extProfile.permissions as Permission[]) || []
+        task_delete_permission = extProfile.task_delete_permission || false
+      }
+
+      return {
+        id: user.id,
+        name: profile.full_name || user.user_metadata?.full_name || user.email!,
+        email: user.email!,
+        role: (profile.role as UserRole) || 'staff',
+        position: profile.position,
+        department: profile.department,
+        access_level: profile.access_level,
+        permissions,
+        task_delete_permission,
+        created_at: profile.created_at,
+        last_active: profile.last_active,
+      }
+    }
+
+    // Not in profiles → check students table
+    const { data: student } = await supabase
+      .from('students')
+      .select('full_name, student_id, disabled, created_at, last_active')
       .eq('id', user.id)
       .single()
-    if (!permError && extProfile) {
-      permissions = (extProfile.permissions as Permission[]) || []
-      task_delete_permission = extProfile.task_delete_permission || false
+
+    if (student) {
+      if (student.disabled) return null
+      return {
+        id: user.id,
+        name: student.full_name || user.user_metadata?.full_name || user.email!,
+        email: user.email!,
+        role: 'student' as UserRole,
+        permissions: [],
+        created_at: student.created_at,
+        last_active: student.last_active,
+      }
     }
 
-    return {
-      id: user.id,
-      name: profile?.full_name || user.user_metadata?.full_name || user.email!,
-      email: user.email!,
-      role: (profile?.role as UserRole) || 'student',
-      position: profile?.position,
-      department: profile?.department,
-      access_level: profile?.access_level,
-      permissions,
-      task_delete_permission,
-      created_at: profile?.created_at,
-      last_active: profile?.last_active,
-    }
+    // Not found anywhere — return null (unknown user)
+    return null
   } catch (err) {
     console.error('getCurrentUser error:', err)
     return null
@@ -224,8 +261,14 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 }
 
 export async function getProfile(userId: string) {
-  const { data } = await getClient().from('profiles').select('*').eq('id', userId).single()
-  return data
+  const client = getClient()
+  // Try profiles first
+  const { data: profile } = await client.from('profiles').select('*').eq('id', userId).single()
+  if (profile) return profile
+  // Fallback to students
+  const { data: student } = await client.from('students').select('*').eq('id', userId).single()
+  if (student) return { ...student, role: 'student' }
+  return null
 }
 
 export async function isAdmin(): Promise<boolean> {
@@ -234,12 +277,12 @@ export async function isAdmin(): Promise<boolean> {
 }
 
 export function isIMSRole(role: UserRole): boolean {
-  const imsRoles: UserRole[] = ['super_admin','branch_manager','marketing_staff','academic_staff','finance_officer','hr_officer','staff']
+  const imsRoles: UserRole[] = ['super_admin','admin','academic_head','academic_officer','finance_head','finance_officer','marketing_head','marketing_officer','hr_head','hr_officer','staff','lecturer']
   return imsRoles.includes(role)
 }
 
 export function canAccessAdmin(role: UserRole): boolean {
-  return role === 'admin' || role === 'academic_manager' || role === 'trainer' || role === 'coordinator' || isIMSRole(role)
+  return role === 'admin' || isIMSRole(role)
 }
 
 /**
@@ -253,16 +296,17 @@ export function getDefaultRoute(role: UserRole): string {
   switch (role) {
     case 'student': return '/dashboard'
     case 'admin':
-    case 'super_admin':
-    case 'branch_manager': return '/admin'
-    case 'marketing_staff': return '/admin/ims/marketing'
-    case 'academic_staff': return '/admin/ims/academic'
+    case 'super_admin': return '/admin'
+    case 'academic_head':
+    case 'academic_officer': return '/admin/ims/academic'
+    case 'marketing_head':
+    case 'marketing_officer': return '/admin/ims/marketing'
+    case 'finance_head':
     case 'finance_officer': return '/admin/ims/finance'
+    case 'hr_head':
     case 'hr_officer': return '/admin/ims/hr'
     case 'staff': return '/admin/ims/dashboard'
-    case 'academic_manager': return '/admin'
-    case 'trainer': return '/admin/attendance'
-    case 'coordinator': return '/admin/enrollments'
+    case 'lecturer': return '/admin/ims/academic'
     default: return '/dashboard'
   }
 }

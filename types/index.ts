@@ -5,16 +5,22 @@
 // ============================================================
 
 // ── ROLES ───────────────────────────────────────────────────
-// ASMS roles
-export type ASMSRole = 'admin' | 'academic_manager' | 'trainer' | 'student' | 'coordinator'
-// IMS roles
-export type IMSRole = 'super_admin' | 'branch_manager' | 'marketing_staff' | 'academic_staff' | 'finance_officer' | 'hr_officer' | 'staff'
+// System roles (non-staff)
+export type SystemRole = 'student' | 'lecturer'
+// Staff/Management roles (the 11 required roles)
+export type StaffRole =
+  | 'super_admin' | 'admin'
+  | 'academic_head' | 'academic_officer'
+  | 'finance_head' | 'finance_officer'
+  | 'marketing_head' | 'marketing_officer'
+  | 'hr_head' | 'hr_officer'
+  | 'staff'
 // Unified
-export type UserRole = ASMSRole | IMSRole
+export type UserRole = SystemRole | StaffRole
 
-export const IMS_ROLES: IMSRole[] = ['super_admin','branch_manager','marketing_staff','academic_staff','finance_officer','hr_officer','staff']
-export const ADMIN_ROLES: UserRole[] = ['admin','super_admin','branch_manager']
-export const ALL_ROLES: UserRole[] = ['admin','super_admin','branch_manager','academic_manager','trainer','student','coordinator','marketing_staff','academic_staff','finance_officer','hr_officer','staff']
+export const STAFF_ROLES: StaffRole[] = ['super_admin','admin','academic_head','academic_officer','finance_head','finance_officer','marketing_head','marketing_officer','hr_head','hr_officer','staff']
+export const ADMIN_ROLES: UserRole[] = ['admin','super_admin']
+export const ALL_ROLES: UserRole[] = ['admin','super_admin','student','lecturer','academic_head','academic_officer','finance_head','finance_officer','marketing_head','marketing_officer','hr_head','hr_officer','staff']
 
 // ── PERMISSIONS ─────────────────────────────────────────────
 export type Permission =
@@ -41,7 +47,7 @@ export interface Profile {
   // ASMS student fields
   student_id: string | null
   education_background: string | null
-  // ASMS trainer fields
+  // ASMS lecturer fields
   specialization: string | null
   bio: string | null
   // IMS staff fields
@@ -53,12 +59,12 @@ export interface Profile {
   work_schedule?: { startTime: string, durationHours: number }[]
   office_assets?: { item: string, serialNo?: string, issuedDate?: string }[]
   documents?: { id: string; title: string; url: string; addedAt: string }[]
-  // HR detail fields
-  nic: string | null
-  join_date: string | null
-  contract_type: string | null
-  monthly_salary: number | null
-  employee_status: string | null
+  epf_number?: string
+  nic?: string
+  join_date?: string
+  contract_type?: string
+  monthly_salary?: number
+  employee_status?: string
   disabled: boolean
   last_active: string | null
   is_active: boolean
@@ -119,16 +125,16 @@ export interface Batch {
   created_at: string
   updated_at: string
   course?: Course
-  trainer_allocations?: TrainerAllocation[]
+  lecturer_allocations?: LecturerAllocation[]
 }
 
-export interface TrainerAllocation {
+export interface LecturerAllocation {
   id: string
   batch_id: string
-  trainer_id: string
+  lecturer_id: string
   module_id: string | null
   created_at: string
-  trainer?: Profile
+  lecturer?: Profile
   module?: Module
 }
 
@@ -258,7 +264,7 @@ export interface DashboardStats {
   totalStudents: number
   totalCourses: number
   totalBatches: number
-  totalTrainers: number
+  totalLecturers: number
   totalEnrollments: number
   totalRevenue: number
   certificatesIssued: number
@@ -328,6 +334,9 @@ export interface ImsPayment {
   date: string
   invoice_id: string | null
   notes: string | null
+  lead_id: string | null
+  source: string | null
+  payment_confirmed: boolean
   created_by: string | null
   created_at: string
 }
@@ -581,3 +590,68 @@ export interface IMSDashboardStats {
   openTasks: number
   totalStudents: number
 }
+
+export interface ImsAcademicStudent {
+  id: string
+  student_name: string
+  student_id: string
+  email: string | null
+  phone: string | null
+  nic: string | null
+  dob: string | null
+  batch_code: string | null
+  course_id: string | null
+  course_name: string | null
+  enrollment_date: string
+  source: 'direct' | 'marketing_lead'
+  lead_id: string | null
+  payment_status: 'pending' | 'paid' | 'partial'
+  status: 'active' | 'completed' | 'dropped'
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ── LECTURER ────────────────────────────────────────────────
+export interface Lecturer {
+  id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  specialization: string | null
+  qualification: string | null
+  department: string | null
+  status: 'Active' | 'Inactive'
+  avatar_url: string | null
+  created_at: string
+}
+
+// ── LEAD CONFIRMATION (Cross-dashboard workflow) ────────────
+export type LeadConfirmationStage = 'marketing_confirmed' | 'finance_confirmed' | 'academic_confirmed'
+
+export interface LeadConfirmation {
+  id: string
+  lead_id: string
+  lead_name: string
+  contact: string | null
+  email: string | null
+  course_interested: string | null
+  stage: LeadConfirmationStage
+  marketing_confirmed_by: string | null
+  marketing_confirmed_at: string | null
+  finance_confirmed_by: string | null
+  finance_confirmed_at: string | null
+  academic_confirmed_by: string | null
+  academic_confirmed_at: string | null
+  payment_amount: number | null
+  payment_method: string | null
+  batch_id: string | null
+  student_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ── BATCH CODE / STUDENT ID HELPERS ─────────────────────────
+export type TimeCode = 'M' | 'A' | 'E'  // Morning, Afternoon, Evening
+export type TypeCode = 'G' | 'I'         // Group, Individual

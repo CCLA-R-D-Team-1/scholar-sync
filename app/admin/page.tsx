@@ -98,7 +98,7 @@ export default function AdminDashboard() {
     { title: "Total Students",    value: stats.totalStudents,      icon: Users,         gradient: "from-blue-500 to-blue-600",      bg: "bg-blue-50",  text: "text-blue-700",  href: "/admin/students" },
     { title: "Active Courses",    value: stats.totalCourses,       icon: BookOpen,      gradient: "from-purple-500 to-purple-600",  bg: "bg-purple-50",text: "text-purple-700",href: "/admin/courses" },
     { title: "Active Batches",    value: stats.totalBatches,       icon: CalendarDays,  gradient: "from-cyan-500 to-cyan-600",      bg: "bg-cyan-50",  text: "text-cyan-700",  href: "/admin/batches" },
-    { title: "Trainers",          value: stats.totalTrainers,      icon: UserCheck,     gradient: "from-orange-500 to-orange-600",  bg: "bg-orange-50",text: "text-orange-700",href: "/admin/trainers" },
+    { title: "Lecturers",          value: stats.totalLecturers,      icon: UserCheck,     gradient: "from-orange-500 to-orange-600",  bg: "bg-orange-50",text: "text-orange-700",href: "/admin/lecturers" },
     { title: "Total Enrollments", value: stats.totalEnrollments,   icon: ClipboardList, gradient: "from-green-500 to-green-600",    bg: "bg-green-50", text: "text-green-700", href: "/admin/enrollments" },
     { title: "Certificates",      value: stats.certificatesIssued, icon: Award,         gradient: "from-yellow-500 to-amber-500",   bg: "bg-yellow-50",text: "text-yellow-700",href: "/admin/certificates" },
     { title: "Total Revenue",     value: formatCurrency(stats.totalRevenue), icon: TrendingUp, gradient: "from-emerald-500 to-emerald-600",bg: "bg-emerald-50",text: "text-emerald-700", href: "/admin/reports", isRevenue: true },
@@ -107,7 +107,7 @@ export default function AdminDashboard() {
 
   const adminGuideSteps: GuideStep[] = [
     { title: "Welcome to ASMS Dashboard", description: "This is your central hub for managing the entire academic system. View real-time stats, revenue, enrollments, and student lifecycle - all at a glance.", icon: GraduationCap, gradient: "from-blue-500 to-cyan-500", tip: "Stats auto-refresh every 30 seconds and update in real-time when changes happen." },
-    { title: "Managing People", description: "Under the 'People' group in the sidebar, you'll find Leads (prospective students), Students (enrolled), and Trainers. Click any stat card to jump directly to that section.", icon: Users, gradient: "from-blue-500 to-blue-600", tip: "Use the sidebar groups - click a category to expand it and see its items." },
+    { title: "Managing People", description: "Under the 'People' group in the sidebar, you'll find Leads (prospective students), Students (enrolled), and Lecturers. Click any stat card to jump directly to that section.", icon: Users, gradient: "from-blue-500 to-blue-600", tip: "Use the sidebar groups - click a category to expand it and see its items." },
     { title: "Courses & Batches", description: "Set up your courses with modules, then create batches to group students into scheduled classes. Enrollments link students to specific courses and batches.", icon: BookOpen, gradient: "from-purple-500 to-purple-600", tip: "Follow the Student Lifecycle Flow at the bottom of this dashboard to see the full journey." },
     { title: "Attendance & Assessments", description: "Track student attendance per batch and manage assessments to evaluate performance. Both sections are under 'Operations' in the sidebar.", icon: CalendarDays, gradient: "from-cyan-500 to-cyan-600" },
     { title: "Certificates & Resources", description: "Issue certificates for completed students and manage shared learning resources. Find these in the 'Operations' group in the sidebar.", icon: Award, gradient: "from-yellow-500 to-amber-500" },
@@ -260,11 +260,11 @@ export default function AdminDashboard() {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {(enrollment.profiles?.full_name || "?")[0].toUpperCase()}
+                        {(enrollment.students?.full_name || "?")[0].toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-gray-900 text-sm truncate">
-                          {enrollment.profiles?.full_name || "Unknown"}
+                        <p className="font-bold text-gray-900 text-sm truncate">
+                          {enrollment.students?.full_name || "Unknown"}
                         </p>
                         <p className="text-[11px] text-gray-400 truncate">
                           {enrollment.courses?.title || "Unknown course"}
@@ -356,12 +356,12 @@ export default function AdminDashboard() {
                   <td className="py-3.5 px-6">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                        {(e.profiles?.full_name || "?")[0].toUpperCase()}
+                        {(e.students?.full_name || "?")[0].toUpperCase()}
                       </div>
-                      <span className="font-medium text-gray-900 truncate max-w-[120px]">{e.profiles?.full_name || "-"}</span>
+                      <span className="font-medium text-gray-900 truncate max-w-[120px]">{e.students?.full_name || "-"}</span>
                     </div>
                   </td>
-                  <td className="py-3.5 px-6 text-gray-400 text-xs font-mono hidden md:table-cell">{e.profiles?.student_id || "-"}</td>
+                  <td className="py-3.5 px-6 text-gray-400 text-xs font-mono hidden md:table-cell">{e.students?.student_id || "-"}</td>
                   <td className="py-3.5 px-6 text-gray-600 text-xs max-w-[140px] truncate">{e.courses?.title || "-"}</td>
                   <td className="py-3.5 px-6 text-gray-500 text-xs hidden lg:table-cell">{e.batches?.name || "-"}</td>
                   <td className="py-3.5 px-6 font-bold text-gray-900">{formatCurrency(e.amount_paid)}</td>

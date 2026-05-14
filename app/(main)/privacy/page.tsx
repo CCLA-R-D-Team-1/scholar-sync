@@ -27,7 +27,7 @@ export default function PrivacyPolicyPage() {
             
             <section>
               <h2 className="text-2xl font-bold text-[#0F172A] mb-4">4. Contact Us</h2>
-              <p>If you have questions or comments about this policy, you may email us at <strong>info@caddcentrelanka.lk</strong> or contact us via our Contact Page.</p>
+              <p>If you have questions or comments about this policy, you may email us at <strong>info@scholarsync.lk</strong> or contact us via our Contact Page.</p>
             </section>
           </div>
         </motion.div>

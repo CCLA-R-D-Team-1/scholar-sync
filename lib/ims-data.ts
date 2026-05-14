@@ -1,16 +1,18 @@
 import { supabase } from './supabase'
+import { getLecturersProfiles } from './data'
 import type {
   Profile, MarketingLead, MarketingCampaign,
   ImsPayment, ImsInvoice, ImsExpense,
   HrLeaveRequest, HrSalaryPayout, HrPerformanceReview, HrRoster,
   OpsTask, OpsMinuteTracker, OpsMinuteTrackerTask,
-  ImsLoginHistory, ImsSystemCommand, IMSDashboardStats, UserRole
+  ImsLoginHistory, ImsSystemCommand, IMSDashboardStats, UserRole,
+  ImsAcademicStudent, Lecturer, LeadConfirmation, LeadConfirmationStage
 } from '@/types'
 
 // ── PROFILES / STAFF ─────────────────────────────────────────
 
 export async function getIMSStaff(): Promise<Profile[]> {
-  const imsRoles = ['admin','super_admin','branch_manager','marketing_staff','academic_staff','finance_officer','hr_officer','staff']
+  const imsRoles = ['admin','super_admin','academic_head','academic_officer','finance_head','finance_officer','marketing_head','marketing_officer','hr_head','hr_officer','staff']
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -48,6 +50,7 @@ export async function updateProfileRole(id: string, updates: Partial<{
   contract_type: string
   monthly_salary: number
   employee_status: string
+  epf_number: string
 }>) {
   const { data, error } = await supabase
     .from('profiles')
@@ -76,6 +79,8 @@ export async function createStaffUser(params: {
   contract_type?: string
   monthly_salary?: number
   employee_status?: string
+  epf_number?: string
+  student_id?: string
 }) {
   // Calls the server-side API route which uses the service role key
   // to bypass RLS policies on the profiles table.
@@ -104,6 +109,8 @@ export async function createStaffUser(params: {
       contract_type: params.contract_type || 'Full-time',
       monthly_salary: params.monthly_salary || null,
       employee_status: params.employee_status || 'Active',
+      epf_number: params.epf_number || null,
+      student_id: params.student_id || null,
     }),
   })
 
@@ -126,7 +133,7 @@ export async function getIMSDashboardStats(): Promise<IMSDashboardStats> {
     revenueResult,
     pendingPaymentsResult,
   ] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).in('role', ['admin','super_admin','branch_manager','marketing_staff','academic_staff','finance_officer','hr_officer','staff']),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).in('role', ['admin','super_admin','academic_head','academic_officer','finance_head','finance_officer','marketing_head','marketing_officer','hr_head','hr_officer','staff']),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student'),
     supabase.from('marketing_leads').select('*', { count: 'exact', head: true }).not('status', 'eq', 'Converted').not('status', 'eq', 'Lost'),
     supabase.from('marketing_leads').select('*', { count: 'exact', head: true }).eq('status', 'Converted'),
@@ -162,7 +169,7 @@ export async function getMarketingLeads(): Promise<MarketingLead[]> {
   return (data || []).map(d => ({ ...d, follow_ups: d.follow_ups || [] }))
 }
 
-export async function createMarketingLead(lead: Omit<MarketingLead, 'id' | 'created_at' | 'updated_at' | 'assignee'> & { created_by?: string | null }): Promise<MarketingLead> {
+export async function createMarketingLead(lead: Omit<MarketingLead, 'id' | 'created_at' | 'updated_at' | 'assignee'>): Promise<MarketingLead> {
   const { data, error } = await supabase
     .from('marketing_leads')
     .insert({ ...lead, follow_ups: lead.follow_ups || [] })
@@ -750,6 +757,423 @@ export function subscribeToSystemCommands(userId: string, callback: (cmd: ImsSys
       { event: 'INSERT', schema: 'public', table: 'ims_system_commands', filter: `target_user_id=eq.${userId}` },
       (payload) => callback(payload.new as ImsSystemCommand)
     )
+    .subscribe()
+  return (): void => { supabase.removeChannel(channel) }
+}
+
+// ── LEAD-TO-STUDENT WORKFLOW ─────────────────────────────────
+
+export async function convertLeadToStudent(params: {
+  leadId: string
+  studentName: string
+  email: string | null
+  phone: string | null
+  nic: string | null
+  dob: string | null
+  courseName: string
+  courseId: string | null
+  amount: number
+  createdBy: string | null
+}): Promise<ImsPayment> {
+  // 1. Update lead status to Converted
+  await supabase
+    .from('marketing_leads')
+    .update({ status: 'Converted', updated_at: new Date().toISOString() })
+    .eq('id', params.leadId)
+
+  // 2. Create a pending payment record linked to the lead
+  const { data, error } = await supabase
+    .from('ims_payments')
+    .insert({
+      student_name: params.studentName,
+      course_id: params.courseId,
+      amount: params.amount,
+      method: 'Cash',
+      date: new Date().toISOString().slice(0, 10),
+      lead_id: params.leadId,
+      source: 'marketing_lead',
+      payment_confirmed: false,
+      notes: `Auto-created from Marketing lead conversion. Course: ${params.courseName}`,
+      created_by: params.createdBy,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function confirmLeadPayment(params: {
+  paymentId: string
+  leadId: string
+  studentName: string
+  email: string | null
+  phone: string | null
+  nic: string | null
+  dob: string | null
+  courseName: string
+  courseId: string | null
+  batchCode: string | null
+  batchId?: string | null
+  confirmedBy: string | null
+  academicEmail?: string | null
+  academicPassword?: string | null
+}): Promise<any> {
+  // 1. Mark payment as confirmed
+  await supabase
+    .from('ims_payments')
+    .update({ payment_confirmed: true })
+    .eq('id', params.paymentId)
+
+  // 2. Generate student ID
+  const batchCodeForId = params.batchCode || 'GEN'
+  const seq = await getNextStudentSequence(batchCodeForId)
+  const studentId = generateStudentId(batchCodeForId, seq)
+
+  // The auth login email is the ACADEMIC email (studentId@caddcentre.lk)
+  const authEmail = params.academicEmail || `${studentId.toLowerCase()}@caddcentre.lk`
+  const authPassword = params.academicPassword || studentId
+
+  // 3. Check if student already exists (by academic email OR personal email)
+  let { data: existingStudent } = await supabase.from('students').select('id').eq('email', authEmail).maybeSingle()
+  if (!existingStudent && params.email) {
+    const { data: byPersonal } = await supabase.from('students').select('id').eq('personal_email', params.email).maybeSingle()
+    existingStudent = byPersonal
+  }
+  let userId = existingStudent?.id
+  if (!userId) {
+    // createStaffUser with role='student' → inserts into `students` table (not profiles)
+    const newStudent = await createStaffUser({
+      email: authEmail,
+      password: authPassword,
+      name: params.studentName,
+      role: 'student',
+      position: 'Student',
+      department: 'Academic',
+      phone: params.phone || undefined,
+      nic: params.nic || undefined,
+      student_id: studentId
+    })
+    userId = newStudent.id
+  }
+
+  // 3b. Update the students record with full academic details
+  await supabase.from('students').update({
+    academic_email: authEmail,
+    academic_password: authPassword,
+    student_id: studentId,
+    personal_email: params.email || null,
+    phone: params.phone || null,
+    nic: params.nic || null,
+    dob: params.dob || null,
+    course_name: params.courseName || null,
+    course_id: params.courseId || null,
+    batch_code: params.batchCode || null,
+    batch_id: params.batchId || null,
+    lead_id: params.leadId || null,
+    source: 'lead_pipeline',
+    payment_status: 'paid',
+    status: 'active',
+  }).eq('id', userId)
+
+  // 4. Create enrollment
+  const { data, error } = await supabase.from('enrollments').insert({
+    user_id: userId,
+    course_id: params.courseId,
+    batch_id: params.batchId || null,
+    status: 'confirmed',
+    payment_status: 'paid',
+    amount_paid: 0
+  }).select().single()
+  
+  if (error) throw error
+
+  // 5. Also create IMS academic student record (for admin views)
+  await supabase.from('ims_academic_students').insert({
+    student_name: params.studentName,
+    student_id: studentId,
+    email: params.email,
+    phone: params.phone,
+    nic: params.nic,
+    dob: params.dob,
+    batch_code: params.batchCode,
+    course_id: params.courseId,
+    course_name: params.courseName,
+    source: 'lead_pipeline',
+    lead_id: params.leadId,
+    payment_status: 'paid',
+    status: 'active',
+    academic_email: authEmail,
+    academic_password: authPassword,
+    created_by: params.confirmedBy,
+  }).select().single()
+
+  return data
+}
+
+// ── BATCH CODE & STUDENT ID GENERATORS ───────────────────────
+
+const COURSE_ABBREVIATIONS: Record<string, string> = {
+  'AutoCAD': 'ACAD', 'Revit': 'RVT', 'SketchUp': 'SKU',
+  '3ds Max': '3DM', 'V-Ray': 'VRY', 'Lumion': 'LUM',
+  'Photoshop': 'PS', 'Illustrator': 'AI', 'InDesign': 'ID',
+  'Premiere Pro': 'PR', 'After Effects': 'AE', 'Blender': 'BLN',
+  'SolidWorks': 'SW', 'CATIA': 'CAT', 'Fusion 360': 'F360',
+  'BIM': 'BIM', 'Interior Design': 'INT', 'Graphic Design': 'GD',
+}
+
+export function generateBatchCode(
+  courseAbbreviation: string,
+  startDate: Date,
+  timeCode: 'M' | 'A' | 'E',
+  typeCode: 'G' | 'I'
+): string {
+  const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
+  let abbr = COURSE_ABBREVIATIONS[courseAbbreviation]
+  if (!abbr) {
+    const firstWord = courseAbbreviation.split(' ')[0]
+    abbr = COURSE_ABBREVIATIONS[firstWord] || courseAbbreviation.replace(/[^A-Z0-9]/gi, '').slice(0, 4).toUpperCase()
+  }
+  const dd = String(startDate.getDate()).padStart(2, '0')
+  const mon = MONTHS[startDate.getMonth()]
+  const yy = String(startDate.getFullYear()).slice(-2)
+  return `${abbr}${dd}${mon}${yy}${timeCode}${typeCode}`
+}
+
+/**
+ * Generate student ID: batchCode + 2-digit sequence (01-99)
+ * Example: ACAD12MAY26MG01
+ */
+export function generateStudentId(batchCode: string, sequenceNumber: number): string {
+  return `${batchCode}${String(sequenceNumber).padStart(2, '0')}`
+}
+
+/**
+ * Get the next available sequence number for a batch
+ */
+export async function getNextStudentSequence(batchCode: string): Promise<number> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('student_id')
+    .like('student_id', `${batchCode}%`)
+    .order('student_id', { ascending: false })
+    .limit(1)
+  if (data && data.length > 0) {
+    const lastId = data[0].student_id
+    const lastSeq = parseInt(lastId.slice(-2), 10)
+    return isNaN(lastSeq) ? 1 : lastSeq + 1
+  }
+  return 1
+}
+
+// ── IMS ACADEMIC STUDENTS ────────────────────────────────────
+
+export async function getImsAcademicStudents(): Promise<ImsAcademicStudent[]> {
+  const { data, error } = await supabase
+    .from('ims_academic_students')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function createImsAcademicStudent(student: Omit<ImsAcademicStudent, 'id' | 'created_at' | 'updated_at'>): Promise<ImsAcademicStudent> {
+  const { data, error } = await supabase
+    .from('ims_academic_students')
+    .insert(student)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteImsAcademicStudent(id: string): Promise<void> {
+  const { error } = await supabase.from('ims_academic_students').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── ADDITIONAL REAL-TIME SUBSCRIPTIONS ────────────────────────
+
+export function subscribeToImsPayments(callback: (payments: ImsPayment[]) => void): () => void {
+  const channel = supabase
+    .channel('ims_payments_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ims_payments' }, async () => {
+      const payments = await getImsPayments()
+      callback(payments)
+    })
+    .subscribe()
+  return (): void => { supabase.removeChannel(channel) }
+}
+
+export function subscribeToHrLeaveRequests(callback: (requests: HrLeaveRequest[]) => void): () => void {
+  const channel = supabase
+    .channel('hr_leave_requests_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'hr_leave_requests' }, async () => {
+      const requests = await getHrLeaveRequests()
+      callback(requests)
+    })
+    .subscribe()
+  return (): void => { supabase.removeChannel(channel) }
+}
+
+export function subscribeToAcademicStudents(callback: (students: ImsAcademicStudent[]) => void): () => void {
+  const channel = supabase
+    .channel('ims_academic_students_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ims_academic_students' }, async () => {
+      const students = await getImsAcademicStudents()
+      callback(students)
+    })
+    .subscribe()
+  return (): void => { supabase.removeChannel(channel) }
+}
+
+// ── LECTURERS ────────────────────────────────────────────────
+
+export async function getLecturers(): Promise<Lecturer[]> {
+  const { data, error } = await supabase
+    .from('lecturers')
+    .select('*')
+    .order('full_name', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export async function createLecturer(lecturer: Omit<Lecturer, 'id' | 'created_at'>): Promise<Lecturer> {
+  const { data, error } = await supabase
+    .from('lecturers')
+    .insert(lecturer)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateLecturer(id: string, updates: Partial<Lecturer>): Promise<Lecturer> {
+  const { data, error } = await supabase
+    .from('lecturers')
+    .update({ ...updates })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteLecturer(id: string): Promise<void> {
+  const { error } = await supabase.from('lecturers').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── LEAD CONFIRMATIONS (Cross-dashboard pipeline) ────────────
+
+export async function getLeadConfirmations(stage?: LeadConfirmationStage): Promise<LeadConfirmation[]> {
+  let query = supabase
+    .from('lead_confirmations')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (stage) query = query.eq('stage', stage)
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
+export async function confirmMarketingLead(leadId: string, confirmedBy: string): Promise<LeadConfirmation> {
+  // Get lead details
+  const { data: lead, error: leadError } = await supabase
+    .from('marketing_leads')
+    .select('*')
+    .eq('id', leadId)
+    .single()
+  if (leadError) throw leadError
+
+  // Mark lead as confirmed
+  await supabase
+    .from('marketing_leads')
+    .update({ confirmed: true, confirmed_at: new Date().toISOString(), confirmed_by: confirmedBy })
+    .eq('id', leadId)
+
+  // Create lead confirmation record
+  const { data, error } = await supabase
+    .from('lead_confirmations')
+    .insert({
+      lead_id: leadId,
+      lead_name: lead.name,
+      contact: lead.contact,
+      email: lead.email,
+      course_interested: lead.course_interested,
+      stage: 'marketing_confirmed',
+      marketing_confirmed_by: confirmedBy,
+      marketing_confirmed_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function confirmLeadPaymentFinance(
+  confirmationId: string, confirmedBy: string,
+  paymentAmount: number, paymentMethod: string
+): Promise<LeadConfirmation> {
+  const { data, error } = await supabase
+    .from('lead_confirmations')
+    .update({
+      stage: 'finance_confirmed',
+      finance_confirmed_by: confirmedBy,
+      finance_confirmed_at: new Date().toISOString(),
+      payment_amount: paymentAmount,
+      payment_method: paymentMethod,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', confirmationId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function confirmLeadAsStudent(
+  confirmationId: string, confirmedBy: string,
+  batchId: string, studentId: string
+): Promise<LeadConfirmation> {
+  const { data, error } = await supabase
+    .from('lead_confirmations')
+    .update({
+      stage: 'academic_confirmed',
+      academic_confirmed_by: confirmedBy,
+      academic_confirmed_at: new Date().toISOString(),
+      batch_id: batchId,
+      student_id: studentId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', confirmationId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+
+
+// ── REALTIME SUBSCRIPTIONS (new) ─────────────────────────────
+
+export function subscribeToLecturers(callback: (lecturers: any[]) => void): () => void {
+  const channel = supabase
+    .channel('lecturers_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: "role=eq.lecturer" }, async () => {
+      const lecturers = await getLecturersProfiles()
+      callback(lecturers)
+    })
+    .subscribe()
+  return (): void => { supabase.removeChannel(channel) }
+}
+
+export function subscribeToLeadConfirmations(callback: (confirmations: LeadConfirmation[]) => void): () => void {
+  const channel = supabase
+    .channel('lead_confirmations_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_confirmations' }, async () => {
+      const confirmations = await getLeadConfirmations()
+      callback(confirmations)
+    })
     .subscribe()
   return (): void => { supabase.removeChannel(channel) }
 }

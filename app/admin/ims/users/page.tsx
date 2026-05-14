@@ -30,27 +30,31 @@ import { confirmDialog } from "@/components/ui/global-confirm-dialog"
 import * as XLSX from "xlsx"
 
 const IMS_ROLES: UserRole[] = [
-  "admin", "super_admin", "branch_manager",
-  "marketing_staff", "academic_staff", "finance_officer", "hr_officer", "staff",
-  "academic_manager", "trainer", "coordinator", "student",
+  "admin", "super_admin",
+  "academic_head", "academic_officer",
+  "finance_head", "finance_officer",
+  "marketing_head", "marketing_officer",
+  "hr_head", "hr_officer",
+  "staff", "lecturer",
 ]
 const DEPARTMENTS = ["Academic", "Marketing", "Finance", "HR", "IT", "Operations"]
 const CONTRACT_TYPES = ["Full-time", "Part-time", "Contract", "Intern"]
 const EMPLOYEE_STATUSES = ["Active", "Inactive", "On Leave", "Terminated"]
 
 const ROLE_COLORS: Record<string, string> = {
-  admin:            "bg-red-100 text-red-600 border-red-200",
-  super_admin:      "bg-red-100 text-red-600 border-red-200",
-  branch_manager:   "bg-purple-100 text-purple-600 border-purple-200",
-  marketing_staff:  "bg-pink-100 text-pink-600 border-pink-200",
-  academic_staff:   "bg-blue-500/20 text-blue-600 border-blue-500/20",
-  finance_officer:  "bg-green-100 text-green-700 border-green-200",
-  hr_officer:       "bg-orange-500/20 text-orange-700 border-orange-500/20",
-  staff:            "bg-gray-100 text-gray-600 border-gray-300",
-  student:          "bg-cyan-100 text-cyan-700 border-cyan-200",
-  trainer:          "bg-yellow-100 text-yellow-700 border-yellow-200",
-  academic_manager: "bg-indigo-100 text-indigo-700 border-indigo-200",
-  coordinator:      "bg-teal-100 text-teal-700 border-teal-200",
+  admin:             "bg-red-100 text-red-600 border-red-200",
+  super_admin:       "bg-red-100 text-red-600 border-red-200",
+  academic_head:     "bg-blue-100 text-blue-700 border-blue-200",
+  academic_officer:  "bg-blue-50 text-blue-600 border-blue-200",
+  marketing_head:    "bg-pink-100 text-pink-700 border-pink-200",
+  marketing_officer: "bg-pink-50 text-pink-600 border-pink-200",
+  finance_head:      "bg-green-100 text-green-700 border-green-200",
+  finance_officer:   "bg-green-50 text-green-600 border-green-200",
+  hr_head:           "bg-orange-100 text-orange-700 border-orange-200",
+  hr_officer:        "bg-orange-50 text-orange-600 border-orange-200",
+  staff:             "bg-gray-100 text-gray-600 border-gray-300",
+  student:           "bg-cyan-100 text-cyan-700 border-cyan-200",
+  lecturer:          "bg-yellow-100 text-yellow-700 border-yellow-200",
 }
 
 // ── Permission Checkbox Grid ─────────────────────────────────
@@ -81,11 +85,11 @@ function PermissionGrid({ role, grantedPermissions, onChange, readOnly }: Permis
         let items = PERMISSION_DEFS.filter(d => d.group === group)
         
         // Hide cross-department and advanced permissions for non-admin roles
-        if (!['admin', 'super_admin', 'branch_manager'].includes(role)) {
+        if (!['admin', 'super_admin'].includes(role)) {
           let hidePerms = ['ims_overview', 'ims_marketing', 'ims_academic', 'ims_finance', 'ims_hr', 'ims_control_panel', 'asms_full', 'ims_users']
           
           if (role === 'hr_officer') hidePerms = hidePerms.filter(p => p !== 'ims_users')
-          if (role === 'academic_manager') hidePerms = hidePerms.filter(p => p !== 'asms_full')
+          // Remove the academic_manager special case — no longer exists
             
           items = items.filter(d => !hidePerms.includes(d.key))
         }
@@ -243,7 +247,7 @@ export default function IMSUsersPage() {
   useEffect(() => { loadData() }, [loadData])
 
   const isAdmin = currentUser?.role === "admin" || currentUser?.role === "super_admin" || currentUser?.role === "hr_officer" || currentUser?.permissions?.includes("ims_users")
-  const canGrantPermissions = currentUser?.role === "admin" || currentUser?.role === "super_admin" || currentUser?.role === "branch_manager"
+  const canGrantPermissions = currentUser?.role === "admin" || currentUser?.role === "super_admin"
 
   // Create form validation errors
   const createErrors: Record<string, string> = {}
@@ -263,7 +267,8 @@ export default function IMSUsersPage() {
 
   const handleCreateBlur = (field: string) => setCreateTouched(prev => ({ ...prev, [field]: true }))
 
-  const handleCreateUser = async () => {
+  const handleCreateUser = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     setCreateTouched({ name: true, email: true, password: true })
     if (!createForm.name.trim() || !isValidName(createForm.name))
       return toast.error("Please enter a valid name (letters only)")
@@ -383,13 +388,16 @@ export default function IMSUsersPage() {
     XLSX.writeFile(wb, `users_${format(new Date(), "yyyy-MM-dd")}.xlsx`)
   }
 
-  const filteredProfiles = profiles.filter(p => {
+  // Exclude students — they belong in Academic → Students
+  const staffProfiles = profiles.filter(p => p.role !== 'student')
+
+  const filteredProfiles = staffProfiles.filter(p => {
     const matchSearch = !search ||
       (p.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
       p.email.toLowerCase().includes(search.toLowerCase()) ||
       (p.department || "").toLowerCase().includes(search.toLowerCase())
     const matchRole = filterRole === "all" || p.role === filterRole ||
-      (filterRole === "admin" && ["admin", "super_admin", "branch_manager"].includes(p.role))
+      (filterRole === "admin" && ["admin", "super_admin"].includes(p.role))
     const matchDept = filterDept === "all" || p.department === filterDept
     const matchStatus = filterStatus === "all" ||
       (filterStatus === "active" && !p.disabled) ||
@@ -401,7 +409,7 @@ export default function IMSUsersPage() {
   const isOnline = (p: Profile) => p.last_active && (Date.now() - new Date(p.last_active).getTime()) < 5 * 60 * 1000
 
   const roleGroups = IMS_ROLES.reduce((acc, r) => {
-    acc[r] = profiles.filter(p => p.role === r).length
+    acc[r] = staffProfiles.filter(p => p.role === r).length
     return acc
   }, {} as Record<string, number>)
 
@@ -429,12 +437,12 @@ export default function IMSUsersPage() {
       {/* Role Summary */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         {[
-          { role: "all",             label: "All Users", count: profiles.length },
-          { role: "admin",           label: "Admins",    count: (roleGroups["admin"] || 0) + (roleGroups["super_admin"] || 0) + (roleGroups["branch_manager"] || 0) },
-          { role: "marketing_staff", label: "Marketing", count: roleGroups["marketing_staff"] || 0 },
-          { role: "academic_staff",  label: "Academic",  count: roleGroups["academic_staff"] || 0 },
-          { role: "finance_officer", label: "Finance",   count: roleGroups["finance_officer"] || 0 },
-          { role: "hr_officer",      label: "HR",        count: roleGroups["hr_officer"] || 0 },
+          { role: "all",             label: "All Users", count: staffProfiles.length },
+          { role: "admin",           label: "Admins",    count: (roleGroups["admin"] || 0) + (roleGroups["super_admin"] || 0) },
+          { role: "academic_head",   label: "Academic",  count: (roleGroups["academic_head"] || 0) + (roleGroups["academic_officer"] || 0) },
+          { role: "marketing_head",  label: "Marketing", count: (roleGroups["marketing_head"] || 0) + (roleGroups["marketing_officer"] || 0) },
+          { role: "finance_head",    label: "Finance",   count: (roleGroups["finance_head"] || 0) + (roleGroups["finance_officer"] || 0) },
+          { role: "hr_head",         label: "HR",        count: (roleGroups["hr_head"] || 0) + (roleGroups["hr_officer"] || 0) },
         ].map(g => (
           <div key={g.role} onClick={() => setFilterRole(g.role)}
             className={`cursor-pointer p-4 rounded-2xl border transition-all ${filterRole === g.role ? 'bg-cyan-500/20 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'bg-gray-100 border-gray-200 hover:border-white/30 hover:bg-gray-100'}`}>
@@ -592,7 +600,7 @@ export default function IMSUsersPage() {
               <button onClick={() => setShowCreateModal(false)} className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-full transition-colors"><X className="h-5 w-5" /></button>
             </div>
 
-            <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
+            <form onSubmit={handleCreateUser} className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
               {/* Account Credentials */}
               <div>
                 <h3 className="text-sm font-bold text-cyan-700 mb-4 uppercase tracking-wider flex items-center gap-2"><Lock className="h-4 w-4" /> Account Credentials</h3>
@@ -611,7 +619,7 @@ export default function IMSUsersPage() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-600">Password *</label>
-                    <input type="password" value={createForm.password} onChange={e => setCreateForm(p => ({ ...p, password: e.target.value }))} onBlur={() => handleCreateBlur("password")} placeholder="Min 6 characters" required
+                    <input type="password" value={createForm.password} onChange={e => setCreateForm(p => ({ ...p, password: e.target.value }))} onBlur={() => handleCreateBlur("password")} placeholder="Min 6 characters" required autoComplete="new-password"
                       className={`w-full bg-gray-100 border rounded-xl px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-cyan-500 ${createErrors.password ? 'border-red-400' : 'border-gray-200'}`} />
                     <FieldError message={createErrors.password} />
                   </div>
@@ -687,12 +695,12 @@ export default function IMSUsersPage() {
               </div>
 
               <div className="pt-6 border-t border-gray-200 flex justify-end gap-3">
-                <button onClick={() => setShowCreateModal(false)} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl font-semibold">Cancel</button>
-                <button onClick={handleCreateUser} disabled={creating} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-gray-900 rounded-xl shadow-lg font-bold disabled:opacity-50">
+                <button type="button" onClick={() => setShowCreateModal(false)} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl font-semibold">Cancel</button>
+                <button type="submit" disabled={creating} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-gray-900 rounded-xl shadow-lg font-bold disabled:opacity-50">
                   {creating ? "Creating..." : "Create Account"}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

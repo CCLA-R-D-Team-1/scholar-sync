@@ -89,7 +89,7 @@ export default function AboutPage() {
           <div className="bg-white/80 backdrop-blur-2xl rounded-[3rem] p-10 md:p-16 border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4 divide-x-0 md:divide-x divide-gray-100">
                <AnimatedCounter value={10000} label="Graduates" prefix="+" />
-               <AnimatedCounter value={50} label="Expert Trainers" prefix="+" />
+               <AnimatedCounter value={50} label="Expert Lecturers" prefix="+" />
                <AnimatedCounter value={15} label="Branch Network" />
                <AnimatedCounter value={98} label="Success Rate" suffix="%" />
             </div>

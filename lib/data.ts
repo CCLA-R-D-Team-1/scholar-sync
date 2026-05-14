@@ -97,7 +97,7 @@ export async function deleteModule(id: string) {
 // ── BATCHES ──────────────────────────────────────────────────────────────────
 
 export async function getBatches(activeOnly = true) {
-  let query = supabase.from('batches').select('*, courses(title, level)').order('start_date', { ascending: false })
+  let query = supabase.from('batches').select('*, courses(title, level), lecturer_allocations(lecturer_id, profiles(full_name))').order('start_date', { ascending: false })
   if (activeOnly) query = query.eq('is_active', true)
   const { data, error } = await query
   if (error) throw error
@@ -106,7 +106,7 @@ export async function getBatches(activeOnly = true) {
 
 export async function getBatchById(id: string) {
   const { data } = await supabase
-    .from('batches').select('*, courses(*), trainer_allocations(*, profiles(full_name, specialization), modules(title))')
+    .from('batches').select('*, courses(*), lecturer_allocations(*, profiles(full_name, specialization), modules(title))')
     .eq('id', id).single()
   return data
 }
@@ -131,19 +131,19 @@ export async function updateBatch(id: string, updates: Partial<{
   return data
 }
 
-// ── TRAINER ALLOCATIONS ──────────────────────────────────────────────────────
+// ── LECTURER ALLOCATIONS ──────────────────────────────────────────────────────
 
-export async function allocateTrainer(batchId: string, trainerId: string, moduleId?: string) {
+export async function allocateLecturer(batchId: string, lecturerId: string, moduleId?: string) {
   const { data, error } = await supabase
-    .from('trainer_allocations')
-    .insert({ batch_id: batchId, trainer_id: trainerId, module_id: moduleId || null })
+    .from('lecturer_allocations')
+    .insert({ batch_id: batchId, lecturer_id: lecturerId, module_id: moduleId || null })
     .select().single()
   if (error) throw error
   return data
 }
 
-export async function removeTrainerAllocation(id: string) {
-  const { error } = await supabase.from('trainer_allocations').delete().eq('id', id)
+export async function removeLecturerAllocation(id: string) {
+  const { error } = await supabase.from('lecturer_allocations').delete().eq('id', id)
   if (error) throw error
 }
 
@@ -151,15 +151,15 @@ export async function removeTrainerAllocation(id: string) {
 
 export async function getStudents() {
   const { data, error } = await supabase
-    .from('profiles').select('*').eq('role', 'student')
+    .from('students').select('*')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data || []
 }
 
-export async function getTrainers() {
+export async function getLecturersProfiles() {
   const { data, error } = await supabase
-    .from('profiles').select('*').eq('role', 'trainer')
+    .from('profiles').select('*').eq('role', 'lecturer')
     .order('full_name')
   if (error) throw error
   return data || []
@@ -193,6 +193,30 @@ export async function toggleUserActive(userId: string, isActive: boolean) {
 // ── ENROLLMENTS ──────────────────────────────────────────────────────────────
 
 export async function enrollStudent(userId: string, courseId: string, batchId: string | null, amountPaid: number) {
+  // Generate student_id if needed
+  if (batchId) {
+    const { data: profile } = await supabase.from('profiles').select('student_id').eq('id', userId).single()
+    if (profile && !profile.student_id) {
+      const { data: batch } = await supabase.from('batches').select('name').eq('id', batchId).single()
+      if (batch) {
+        const batchCode = batch.name.split(' - ').pop() || 'GEN'
+        const { data: seqData } = await supabase.from('profiles')
+          .select('student_id').like('student_id', `${batchCode}%`)
+          .order('student_id', { ascending: false }).limit(1)
+        
+        let seq = 1
+        if (seqData && seqData.length > 0 && seqData[0].student_id) {
+          const lastSeqStr = seqData[0].student_id.replace(batchCode, '')
+          const lastSeq = parseInt(lastSeqStr, 10)
+          if (!isNaN(lastSeq)) seq = lastSeq + 1
+        }
+        
+        const newStudentId = `${batchCode}${String(seq).padStart(2, '0')}`
+        await supabase.from('profiles').update({ student_id: newStudentId }).eq('id', userId)
+      }
+    }
+  }
+
   const { data, error } = await supabase.from('enrollments').insert({
     user_id: userId, course_id: courseId, batch_id: batchId,
     status: 'confirmed', payment_status: 'paid', amount_paid: amountPaid,
@@ -203,12 +227,24 @@ export async function enrollStudent(userId: string, courseId: string, batchId: s
 }
 
 export async function getEnrollments() {
-  const { data, error } = await supabase
+  const { data: enrollments, error } = await supabase
     .from('enrollments')
-    .select('*, profiles(full_name, email, student_id), courses(title, level), batches(name)')
+    .select('*, courses(title, level), batches(name)')
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data || []
+  if (!enrollments || enrollments.length === 0) return []
+
+  // Fetch student data separately (avoids FK dependency)
+  const userIds = [...new Set(enrollments.map(e => e.user_id))]
+  const { data: students } = await supabase
+    .from('students').select('id, full_name, email, student_id')
+    .in('id', userIds)
+  const studentMap = new Map((students || []).map(s => [s.id, s]))
+
+  return enrollments.map(e => ({
+    ...e,
+    students: studentMap.get(e.user_id) || null
+  }))
 }
 
 export async function getUserEnrollments(userId: string) {
@@ -234,16 +270,50 @@ export async function updateEnrollmentStatus(id: string, status: string) {
   return data
 }
 
+export async function deleteEnrollment(id: string) {
+  const { error } = await supabase.from('enrollments').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function getAssessmentsByBatch(batchId: string) {
+  // Get all enrollments for this batch, then get all assessments for those enrollments
+  const { data: enrollments } = await supabase
+    .from('enrollments').select('id').eq('batch_id', batchId)
+  if (!enrollments || enrollments.length === 0) return []
+  const enrollmentIds = enrollments.map(e => e.id)
+  const { data, error } = await supabase
+    .from('assessments').select('*, modules(title)')
+    .in('enrollment_id', enrollmentIds)
+    .order('conducted_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
 // ── ATTENDANCE ───────────────────────────────────────────────────────────────
 
 export async function getAttendanceByBatch(batchId: string, date?: string) {
   let query = supabase.from('attendance')
-    .select('*, enrollments(profiles(full_name, student_id))')
+    .select('*, enrollments(user_id)')
     .eq('batch_id', batchId)
   if (date) query = query.eq('date', date)
-  const { data, error } = await query.order('date', { ascending: false })
+  const { data: attendance, error } = await query.order('date', { ascending: false })
   if (error) throw error
-  return data || []
+  if (!attendance || attendance.length === 0) return []
+
+  // Fetch student data for the enrolled user_ids
+  const userIds = [...new Set(attendance.map((a: any) => a.enrollments?.user_id).filter(Boolean))]
+  const { data: students } = await supabase
+    .from('students').select('id, full_name, student_id')
+    .in('id', userIds)
+  const studentMap = new Map((students || []).map(s => [s.id, s]))
+
+  return attendance.map((a: any) => ({
+    ...a,
+    enrollments: {
+      ...a.enrollments,
+      students: a.enrollments?.user_id ? studentMap.get(a.enrollments.user_id) || null : null
+    }
+  }))
 }
 
 export async function markAttendance(records: {
@@ -320,20 +390,37 @@ export async function updateAssessment(id: string, updates: Partial<{
 // ── CERTIFICATES ─────────────────────────────────────────────────────────────
 
 export async function getCertificates() {
-  const { data, error } = await supabase
+  const { data: certs, error } = await supabase
     .from('certificates')
-    .select('*, profiles(full_name, email, student_id), courses(title, level)')
+    .select('*, courses(title, level)')
     .order('issued_at', { ascending: false })
   if (error) throw error
-  return data || []
+  if (!certs || certs.length === 0) return []
+
+  const userIds = [...new Set(certs.map(c => c.user_id))]
+  const { data: students } = await supabase
+    .from('students').select('id, full_name, email, student_id')
+    .in('id', userIds)
+  const studentMap = new Map((students || []).map(s => [s.id, s]))
+
+  return certs.map(c => ({
+    ...c,
+    students: studentMap.get(c.user_id) || null
+  }))
 }
 
 export async function getCertificateByNumber(certNumber: string) {
   const { data } = await supabase
     .from('certificates')
-    .select('*, profiles(full_name, email), courses(title, level)')
+    .select('*, courses(title, level)')
     .eq('certificate_number', certNumber).single()
-  return data
+  if (!data) return null
+
+  const { data: student } = await supabase
+    .from('students').select('id, full_name, email')
+    .eq('id', data.user_id).single()
+
+  return { ...data, students: student || null }
 }
 
 export async function issueCertificate(cert: {
@@ -403,25 +490,39 @@ export async function getDashboardStats() {
     { count: totalStudents },
     { count: totalCourses },
     { count: totalBatches },
-    { count: totalTrainers },
+    { count: totalLecturers },
     { count: totalEnrollments },
     { count: certificatesIssued },
     { data: enrollmentRevenue },
-    { data: recentEnrollments },
+    { data: rawRecentEnrollments },
     { data: attendanceData },
   ] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student'),
+    supabase.from('students').select('*', { count: 'exact', head: true }),
     supabase.from('courses').select('*', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('batches').select('*', { count: 'exact', head: true }).eq('is_active', true),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'trainer'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'lecturer'),
     supabase.from('enrollments').select('*', { count: 'exact', head: true }),
     supabase.from('certificates').select('*', { count: 'exact', head: true }),
     supabase.from('enrollments').select('amount_paid, created_at'),
     supabase.from('enrollments')
-      .select('*, profiles(full_name, email, student_id), courses(title, level), batches(name)')
+      .select('*, courses(title, level), batches(name)')
       .order('created_at', { ascending: false }).limit(10),
     supabase.from('attendance').select('status'),
   ])
+
+  // Enrich recent enrollments with student data
+  let recentEnrollments = rawRecentEnrollments || []
+  if (recentEnrollments.length > 0) {
+    const userIds = [...new Set(recentEnrollments.map((e: any) => e.user_id))]
+    const { data: students } = await supabase
+      .from('students').select('id, full_name, email, student_id')
+      .in('id', userIds)
+    const studentMap = new Map((students || []).map(s => [s.id, s]))
+    recentEnrollments = recentEnrollments.map((e: any) => ({
+      ...e,
+      students: studentMap.get(e.user_id) || null
+    }))
+  }
 
   const totalRevenue = enrollmentRevenue?.reduce((sum, e) => sum + (e.amount_paid || 0), 0) || 0
 
@@ -444,13 +545,13 @@ export async function getDashboardStats() {
     totalStudents: totalStudents || 0,
     totalCourses: totalCourses || 0,
     totalBatches: totalBatches || 0,
-    totalTrainers: totalTrainers || 0,
+    totalLecturers: totalLecturers || 0,
     totalEnrollments: totalEnrollments || 0,
     certificatesIssued: certificatesIssued || 0,
     totalRevenue,
     attendanceRate,
     monthlyRevenue,
-    recentEnrollments: recentEnrollments || [],
+    recentEnrollments,
   }
 }
 
@@ -600,24 +701,30 @@ export async function updateAcademicRecord(id: string, updates: Record<string, u
 export async function getCertificateVerification(certificateNumber: string) {
   const { data, error } = await supabase
     .from('certificates')
-    .select('*, profiles(full_name, student_id, email), courses(title, level)')
+    .select('*, courses(title, level)')
     .eq('certificate_number', certificateNumber)
     .single()
   if (error && error.code !== 'PGRST116') throw error
-  return data
+  if (!data) return null
+
+  const { data: student } = await supabase
+    .from('students').select('id, full_name, student_id, email')
+    .eq('id', data.user_id).single()
+
+  return { ...data, students: student || null }
 }
 
-export async function getTrainerPerformance() {
-  const { data: trainers, error } = await supabase
+export async function getLecturerPerformance() {
+  const { data: lecturers, error } = await supabase
     .from('profiles')
     .select('id, full_name, email, phone, specialization, is_active')
-    .eq('role', 'trainer')
+    .eq('role', 'lecturer')
     .order('created_at', { ascending: false })
   if (error) throw error
 
   const { data: allocations } = await supabase
-    .from('trainer_allocations')
-    .select('trainer_id, batch_id, module_id')
+    .from('lecturer_allocations')
+    .select('lecturer_id, batch_id, module_id')
   const { data: attendance } = await supabase
     .from('attendance')
     .select('marked_by, status')
@@ -625,20 +732,20 @@ export async function getTrainerPerformance() {
     .from('module_progress')
     .select('score, practical_score, theory_score, completed_at')
 
-  return (trainers || []).map((trainer: any) => {
-    const trainerAllocs = (allocations || []).filter((a: any) => a.trainer_id === trainer.id)
-    const trainerAttendance = (attendance || []).filter((a: any) => a.marked_by === trainer.id)
-    const presentCount = trainerAttendance.filter((a: any) => a.status === 'present').length
-    const avgAttendance = trainerAttendance.length ? Math.round((presentCount / trainerAttendance.length) * 100) : 0
+  return (lecturers || []).map((lecturer: any) => {
+    const lecturerAllocs = (allocations || []).filter((a: any) => a.lecturer_id === lecturer.id)
+    const lecturerAttendance = (attendance || []).filter((a: any) => a.marked_by === lecturer.id)
+    const presentCount = lecturerAttendance.filter((a: any) => a.status === 'present').length
+    const avgAttendance = lecturerAttendance.length ? Math.round((presentCount / lecturerAttendance.length) * 100) : 0
     const completedProgress = (progress || []).filter((p: any) => p.completed_at)
     const progressScores = completedProgress
       .map((p: any) => p.score ?? p.practical_score ?? p.theory_score)
       .filter((x: any) => typeof x === 'number')
     const avgScore = progressScores.length ? Math.round(progressScores.reduce((a: number, b: number) => a + b, 0) / progressScores.length) : null
     return {
-      ...trainer,
-      assigned_batches: new Set(trainerAllocs.map((a: any) => a.batch_id)).size,
-      assigned_modules: trainerAllocs.filter((a: any) => a.module_id).length,
+      ...lecturer,
+      assigned_batches: new Set(lecturerAllocs.map((a: any) => a.batch_id)).size,
+      assigned_modules: lecturerAllocs.filter((a: any) => a.module_id).length,
       attendance_rate: avgAttendance,
       average_score: avgScore,
     }

@@ -7,6 +7,11 @@ import { format } from "date-fns"
 import jsPDF from "jspdf"
 import * as XLSX from "xlsx"
 import { useRouter } from "next/navigation"
+import CDMDataTable, { type CDMColumn, type CDMAction } from "@/components/ims/CDMDataTable"
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, CartesianGrid, Legend, Area, AreaChart
+} from "recharts"
 
 import {
   Users, DollarSign, Star, CalendarDays, Plus,
@@ -23,6 +28,7 @@ import {
   getHrLeaveRequests, createHrLeaveRequest, updateHrLeaveRequest, deleteHrLeaveRequest,
   getHrSalaryPayouts, createHrSalaryPayout, deleteHrSalaryPayout,
   getHrPerformanceReviews, createHrPerformanceReview, deleteHrPerformanceReview,
+  subscribeToHrLeaveRequests,
 } from "@/lib/ims-data"
 import type { StaffAttendanceSession } from "@/lib/ims-data"
 import { getCurrentUser, signOut } from "@/lib/auth"
@@ -32,6 +38,7 @@ import type { Profile, HrLeaveRequest, HrSalaryPayout, HrPerformanceReview, HrRo
 import SriLankaCalendar from "@/components/ims/SriLankaCalendar"
 import StaffAttendance from "@/components/ims/StaffAttendance"
 import ProfileSection from "@/components/ims/ProfileSection"
+import LeaveRequestsView from "@/components/ims/LeaveRequestsView"
 import IMSTasksPage from "../tasks/page"
 import { confirmDialog } from "@/components/ui/global-confirm-dialog"
 
@@ -44,7 +51,7 @@ const EMPLOYEE_STATUSES = ["Active", "Inactive", "On Leave", "Terminated"]
 export default function HRDashboard() {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState("directory")
+  const [activeTab, setActiveTab] = useState("overview")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const [employees, setEmployees] = useState<Profile[]>([])
@@ -80,7 +87,7 @@ export default function HRDashboard() {
     work_schedule: [] as { startTime: string, durationHours: number }[],
     office_assets: [] as { item: string, serialNo?: string, issuedDate?: string }[],
     permissions: [] as Permission[],
-    phone: "", nic: "", join_date: "",
+    phone: "", nic: "", epf_number: "", join_date: "",
     contract_type: "Full-time", monthly_salary: "" as string,
     employee_status: "Active",
   }
@@ -106,6 +113,12 @@ export default function HRDashboard() {
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Real-time leave request subscription
+  useEffect(() => {
+    const unsub = subscribeToHrLeaveRequests(setLeaves)
+    return unsub
+  }, [])
   
   useEffect(() => {
     const handleSwitchTab = (e: any) => setActiveTab(e.detail)
@@ -238,6 +251,7 @@ export default function HRDashboard() {
           office_assets: userForm.office_assets, full_name: userForm.name,
           permissions: userForm.permissions, phone: userForm.phone,
           nic: userForm.nic, join_date: userForm.join_date || undefined,
+          epf_number: userForm.epf_number || undefined,
           contract_type: userForm.contract_type, employee_status: userForm.employee_status,
           monthly_salary: userForm.monthly_salary ? parseFloat(userForm.monthly_salary) : undefined,
         })
@@ -251,6 +265,7 @@ export default function HRDashboard() {
           office_assets: userForm.office_assets, permissions: userForm.permissions,
           phone: userForm.phone || undefined, nic: userForm.nic || undefined,
           join_date: userForm.join_date || undefined, contract_type: userForm.contract_type || 'Full-time',
+          epf_number: userForm.epf_number || undefined,
           monthly_salary: userForm.monthly_salary ? parseFloat(userForm.monthly_salary) : undefined,
           employee_status: userForm.employee_status || 'Active',
         })
@@ -294,6 +309,7 @@ export default function HRDashboard() {
     {
       label: '🏢 HR Management',
       items: [
+        { id: 'overview',      label: 'Overview',        icon: Building2,   badge: 0 },
         { id: 'directory',     label: 'Staff Directory', icon: Users,       badge: 0 },
         { id: 'leaves',        label: 'Leave Requests',  icon: CalendarDays,badge: leaves.filter(l=>l.status==='Pending').length },
         { id: 'salary',        label: 'Payroll',         icon: DollarSign,  badge: 0 },
@@ -304,6 +320,7 @@ export default function HRDashboard() {
       label: '📋 My Work',
       items: [
         { id: 'tasks',         label: 'Tasks',           icon: FileText,    badge: 0 },
+        { id: 'leave-requests', label: 'My Leaves', icon: CalendarDays, badge: 0 },
         { id: 'attendance',    label: 'My Attendance',   icon: Clock,       badge: 0 },
         { id: 'profile',       label: 'My Profile',      icon: User,        badge: 0 },
       ]
@@ -442,106 +459,220 @@ export default function HRDashboard() {
 
         <main className="flex-1 p-4 md:p-6 min-h-[calc(100vh-80px)] overflow-auto space-y-5 bg-gray-50">
 
-          {/* ── DIRECTORY ── */}
-          {activeTab === 'directory' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex-1 min-w-[180px] relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search staff…"
-                    className="w-full pl-9 pr-3 py-2 bg-gray-50 text-gray-900 placeholder-gray-400 rounded-xl border border-gray-200 focus:outline-none focus:border-purple-500" />
-                </div>
-                {isHead && (
-                  <motion.button whileHover={{ scale: 1.05 }}
-                    onClick={() => { setEditingEmp(null); setUserForm(emptyUserForm); setShowUserModal(true); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-gray-900 rounded-xl font-semibold">
-                    <Plus className="w-4 h-4" /> Add Staff
-                  </motion.button>
-                )}
+          {/* ── OVERVIEW ── */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total Staff', value: employees.length, color: 'from-purple-500 to-pink-500', icon: Users },
+                  { label: 'Active', value: employees.filter(e => !e.disabled).length, color: 'from-emerald-500 to-cyan-500', icon: CheckCircle },
+                  { label: 'Pending Leaves', value: leaves.filter(l => l.status === 'Pending').length, color: 'from-amber-500 to-orange-500', icon: CalendarDays },
+                  { label: 'Avg Performance', value: reviews.length ? `${Math.round(reviews.reduce((s, r) => s + r.score, 0) / reviews.length)}%` : 'N/A', color: 'from-blue-500 to-indigo-500', icon: Star },
+                ].map((card, i) => (
+                  <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+                    className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center mb-3`}>
+                      <card.icon className="w-5 h-5 text-white" />
+                    </div>
+                    <p className="text-2xl font-black text-gray-900">{card.value}</p>
+                    <p className="text-xs text-gray-500 font-medium mt-1">{card.label}</p>
+                  </motion.div>
+                ))}
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left border-separate border-spacing-y-2 px-4">
-                    <thead>
-                      <tr className="text-gray-400 text-[10px] font-bold uppercase tracking-widest bg-gray-50">
-                        <th className="px-4 py-4">Staff Member</th>
-                        <th className="px-4 py-4">Department</th>
-                        <th className="px-4 py-4">Role</th>
-                        <th className="px-4 py-4">Status</th>
-                        <th className="px-4 py-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredEmployees.map(emp => (
-                      <tr key={emp.id} className={`group bg-gray-50 hover:bg-purple-50 transition-all rounded-2xl border border-gray-100 ${emp.disabled ? 'opacity-50' : ''}`}>
-                          <td className="px-4 py-4 rounded-l-2xl">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-200 flex items-center justify-center text-purple-600 font-bold shadow-inner overflow-hidden">
-                                {emp.avatar_url ? (
-                                  <img src={emp.avatar_url} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                  emp.full_name?.charAt(0).toUpperCase() || emp.email.charAt(0).toUpperCase()
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-bold text-gray-900 text-[15px] truncate">{emp.full_name || emp.email}</p>
-                                <p className="text-gray-400 text-xs truncate">{emp.position || 'Staff member'}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="px-3 py-1 rounded-lg bg-purple-100 text-purple-700 text-[11px] font-bold uppercase tracking-wider border border-purple-200">
-                              {emp.department || 'General'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className="text-gray-700 font-medium">
-                              {emp.role.replace(/_/g, ' ')}
-                            </div>
-                            <div className="text-[10px] text-gray-400 truncate">{emp.email}</div>
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-tighter ${emp.disabled ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
-                              <div className={`w-1.5 h-1.5 rounded-full ${emp.disabled ? 'bg-red-500' : 'bg-green-500'} animate-pulse`} />
-                              {emp.disabled ? 'Disabled' : 'Active'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 rounded-r-2xl text-right">
-                            {isHead && (
-                              <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => { 
-                                  setEditingEmp(emp); 
-                                  setUserForm({
-                                    email: emp.email, password: "", name: emp.full_name || "",
-                                    role: emp.role as UserRole, position: emp.position || "", department: emp.department || "HR", access_level: emp.access_level || 1,
-                                    work_schedule: emp.work_schedule || [], office_assets: emp.office_assets || [], permissions: emp.permissions || [],
-                                    phone: emp.phone || "", nic: emp.nic || "", join_date: emp.join_date || "",
-                                    contract_type: emp.contract_type || "Full-time",
-                                    monthly_salary: emp.monthly_salary != null ? String(emp.monthly_salary) : "",
-                                    employee_status: emp.employee_status || "Active",
-                                  });
-                                  setShowUserModal(true);
-                                  setLoadingAttendance(true);
-                                  getMyAttendance(emp.id, 60).then(d => setUserAttendance(d)).catch(() => setUserAttendance([])).finally(() => setLoadingAttendance(false));
-                                }} className="p-2 hover:bg-purple-100 hover:text-purple-600 text-gray-400 rounded-lg transition-all" title="Edit Staff">
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => handleToggleDisable(emp)} 
-                                  className={`p-2 rounded-lg transition-all ${emp.disabled ? 'hover:bg-green-100 hover:text-green-700' : 'hover:bg-red-100 hover:text-red-600'} text-gray-400`}
-                                  title={emp.disabled ? "Enable" : "Disable"}>
-                                  <Power className="w-4 h-4" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {/* Charts Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Leave Requests by Type */}
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-1.5 h-5 bg-purple-500 rounded-full" /> Leave Requests by Type
+                  </h3>
+                  {(() => {
+                    const leaveData = LEAVE_TYPES.map(t => ({ name: t, value: leaves.filter(l => l.type === t).length })).filter(d => d.value > 0)
+                    const COLORS = ['#8b5cf6', '#ec4899', '#f97316', '#06b6d4', '#6b7280']
+                    return leaveData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={260}>
+                        <BarChart data={leaveData} barSize={32}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                          <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} />
+                          <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb' }} />
+                          <Bar dataKey="value" fill="url(#hrGrad)" radius={[8, 8, 0, 0]} />
+                          <defs>
+                            <linearGradient id="hrGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#8b5cf6" />
+                              <stop offset="100%" stopColor="#ec4899" />
+                            </linearGradient>
+                          </defs>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-[260px] text-gray-400 text-sm">No leave data yet</div>
+                    )
+                  })()}
+                </div>
+
+                {/* Staff by Department */}
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-1.5 h-5 bg-pink-500 rounded-full" /> Staff by Department
+                  </h3>
+                  {(() => {
+                    const deptData = DEPARTMENTS.map(d => ({ name: d, value: employees.filter(e => e.department === d).length })).filter(d => d.value > 0)
+                    const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f97316', '#06b6d4']
+                    return deptData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={260}>
+                        <PieChart>
+                          <Pie data={deptData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                            {deptData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-[260px] text-gray-400 text-sm">No department data yet</div>
+                    )
+                  })()}
                 </div>
               </div>
+
+              {/* Payroll Trend */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="w-1.5 h-5 bg-blue-500 rounded-full" /> Payroll Trend
+                </h3>
+                {(() => {
+                  const monthData: Record<string, number> = {}
+                  payouts.forEach(p => {
+                    if (!monthData[p.month]) monthData[p.month] = 0
+                    monthData[p.month] += p.amount
+                  })
+                  const data = Object.entries(monthData).slice(-6).map(([month, total]) => ({ month, total }))
+                  return data.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <AreaChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} />
+                        <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb' }} />
+                        <Area type="monotone" dataKey="total" stroke="#8b5cf6" fill="#8b5cf620" strokeWidth={2} name="Total Payroll" />
+                        <Legend />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[260px] text-gray-400 text-sm">No payroll data yet</div>
+                  )
+                })()}
+              </div>
+
+              {/* Quick Actions */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Staff Directory', icon: Users, onClick: () => setActiveTab('directory'), color: 'from-purple-500 to-pink-500' },
+                  { label: 'Leave Requests', icon: CalendarDays, onClick: () => setActiveTab('leaves'), color: 'from-amber-500 to-orange-500' },
+                  { label: 'Payroll', icon: DollarSign, onClick: () => setActiveTab('salary'), color: 'from-blue-500 to-indigo-500' },
+                  { label: 'Performance', icon: Star, onClick: () => setActiveTab('performance'), color: 'from-yellow-500 to-orange-500' },
+                ].map((action, i) => (
+                  <motion.button key={i} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}
+                    onClick={action.onClick}
+                    className={`bg-gradient-to-r ${action.color} text-white p-4 rounded-2xl flex flex-col items-center gap-2 shadow-lg transition-all`}>
+                    <action.icon className="w-6 h-6" />
+                    <span className="text-sm font-bold">{action.label}</span>
+                  </motion.button>
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* ── DIRECTORY ── */}
+          {activeTab === 'directory' && (
+            <CDMDataTable
+              data={employees}
+              columns={[
+                {
+                  key: 'full_name', label: 'Staff Member', sortable: true,
+                  render: (val: string, row: any) => (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-200 flex items-center justify-center text-purple-600 font-bold shadow-inner overflow-hidden flex-shrink-0">
+                        {row.avatar_url ? (
+                          <img src={row.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          (val || row.email || '?').charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 text-[15px] truncate">{val || row.email}</p>
+                        <p className="text-gray-400 text-xs truncate">{row.position || 'Staff member'}</p>
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'department', label: 'Department', sortable: true,
+                  render: (val: string) => (
+                    <span className="px-3 py-1 rounded-lg bg-purple-100 text-purple-700 text-[11px] font-bold uppercase tracking-wider border border-purple-200">
+                      {val || 'General'}
+                    </span>
+                  )
+                },
+                {
+                  key: 'role', label: 'Role', sortable: true,
+                  render: (val: string, row: any) => (
+                    <div>
+                      <p className="text-gray-700 font-medium">{val.replace(/_/g, ' ')}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{row.email}</p>
+                    </div>
+                  )
+                },
+                {
+                  key: 'disabled', label: 'Status',
+                  render: (val: boolean) => (
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-tighter ${val ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${val ? 'bg-red-500' : 'bg-green-500'} animate-pulse`} />
+                      {val ? 'Disabled' : 'Active'}
+                    </div>
+                  )
+                },
+              ] as CDMColumn[]}
+              actions={isHead ? [
+                {
+                  label: 'Edit', icon: Edit, variant: 'default' as const,
+                  onClick: (emp: any) => {
+                    setEditingEmp(emp); 
+                    setUserForm({
+                      email: emp.email, password: "", name: emp.full_name || "",
+                      role: emp.role as UserRole, position: emp.position || "", department: emp.department || "HR", access_level: emp.access_level || 1,
+                      work_schedule: emp.work_schedule || [], office_assets: emp.office_assets || [], permissions: emp.permissions || [],
+                      phone: emp.phone || "", nic: emp.nic || "", epf_number: (emp as any).epf_number || "", join_date: emp.join_date || "",
+                      contract_type: emp.contract_type || "Full-time",
+                      monthly_salary: emp.monthly_salary != null ? String(emp.monthly_salary) : "",
+                      employee_status: emp.employee_status || "Active",
+                    });
+                    setShowUserModal(true);
+                    setLoadingAttendance(true);
+                    getMyAttendance(emp.id, 60).then(d => setUserAttendance(d)).catch(() => setUserAttendance([])).finally(() => setLoadingAttendance(false));
+                  }
+                },
+                {
+                  label: 'Toggle', icon: Power, variant: 'warning' as const,
+                  onClick: (emp: any) => handleToggleDisable(emp)
+                },
+              ] as CDMAction[] : []}
+              title="Staff Directory"
+              icon={Users}
+              searchPlaceholder="Search staff..."
+              exportFileName="Staff_Directory"
+              emptyMessage="No staff members found"
+              headerActions={isHead ? (
+                <motion.button whileHover={{ scale: 1.05 }}
+                  onClick={() => { setEditingEmp(null); setUserForm(emptyUserForm); setShowUserModal(true); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-semibold text-sm">
+                  <Plus className="w-4 h-4" /> Add Staff
+                </motion.button>
+              ) : undefined}
+              rowClassName={(row: any) => row.disabled ? 'opacity-50' : ''}
+            />
           )}
 
           {/* ── LEAVES ── */}
@@ -590,51 +721,48 @@ export default function HRDashboard() {
 
           {/* ── PAYROLL ── */}
           {activeTab === 'salary' && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Payroll</h2>
-                <div className="flex gap-2">
-                  <motion.button whileHover={{ scale: 1.05 }} onClick={exportPayroll}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl border border-gray-200">
-                    <Download className="w-4 h-4" /> Export Excel
-                  </motion.button>
-                  {isHead && (
-                    <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowPayoutModal(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-gray-900 rounded-xl font-semibold">
-                      <Plus className="w-4 h-4" /> Log Payout
-                    </motion.button>
-                  )}
-                </div>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-gray-700 whitespace-nowrap md:whitespace-normal">
-                    <thead className="bg-gray-100">
-                      <tr>{['Month','Employee','Amount','Paid On','Payslip','Actions'].map(h => (
-                        <th key={h} className="text-left px-4 py-3 text-gray-500 text-xs uppercase">{h}</th>
-                      ))}</tr>
-                    </thead>
-                    <tbody>
-                      {payouts.map(p => (
-                        <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-100">
-                          <td className="px-4 py-3 font-semibold text-purple-700">{p.month}</td>
-                          <td className="px-4 py-3 text-gray-900">{p.employee_name}</td>
-                          <td className="px-4 py-3 font-bold text-green-700">LKR {p.amount.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-gray-500">{p.paid_on || '-'}</td>
-                          <td className="px-4 py-3">
-                            <button onClick={() => generatePayslipPDF(p)} className="px-3 py-1 glass-button text-xs rounded-lg flex items-center gap-1 border border-gray-200"><FileText className="w-3 h-3"/> PDF</button>
-                          </td>
-                          <td className="px-4 py-3">
-                            {isHead && <button onClick={() => handleDeletePayout(p.id)} className="p-1.5 hover:text-red-600 text-gray-400"><Trash2 className="w-4 h-4" /></button>}
-                          </td>
-                        </tr>
-                      ))}
-                      {payouts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-gray-400">No payroll records.</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <CDMDataTable
+              data={payouts}
+              columns={[
+                {
+                  key: 'month', label: 'Month', sortable: true,
+                  render: (val: string) => <span className="font-semibold text-purple-700">{val}</span>
+                },
+                {
+                  key: 'employee_name', label: 'Employee', sortable: true,
+                  render: (val: string) => <span className="font-medium text-gray-900">{val}</span>
+                },
+                {
+                  key: 'amount', label: 'Amount', sortable: true,
+                  render: (val: number) => <span className="font-bold text-emerald-700">LKR {val.toLocaleString()}</span>
+                },
+                {
+                  key: 'paid_on', label: 'Paid On',
+                  render: (val: string) => <span className="text-gray-500">{val || '—'}</span>
+                },
+              ] as CDMColumn[]}
+              actions={[
+                {
+                  label: 'Payslip', icon: FileText, variant: 'default' as const,
+                  onClick: (row: any) => generatePayslipPDF(row)
+                },
+                ...(isHead ? [{
+                  label: 'Delete', icon: Trash2, variant: 'danger' as const,
+                  onClick: (row: any) => handleDeletePayout(row.id)
+                }] : [])
+              ] as CDMAction[]}
+              title="Payroll"
+              icon={DollarSign}
+              searchPlaceholder="Search payroll..."
+              exportFileName="Payroll_Export"
+              emptyMessage="No payroll records"
+              headerActions={isHead ? (
+                <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowPayoutModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-semibold text-sm">
+                  <Plus className="w-4 h-4" /> Log Payout
+                </motion.button>
+              ) : undefined}
+            />
           )}
 
           {/* ── PERFORMANCE ── */}
@@ -677,6 +805,7 @@ export default function HRDashboard() {
           )}
 
           {activeTab === 'calendar' && <SriLankaCalendar accentColor="purple" />}
+          {activeTab === 'leave-requests' && <LeaveRequestsView />}
           {activeTab === 'attendance' && (
             <div className="bg-white border border-gray-200 p-6 rounded-2xl border border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-4">My Attendance</h2>
@@ -760,6 +889,11 @@ export default function HRDashboard() {
                     <div>
                       <label className="block text-gray-600 text-xs font-bold uppercase mb-1">NIC</label>
                       <input value={userForm.nic} onChange={e => setUserForm(p => ({ ...p, nic: e.target.value }))} placeholder="National ID"
+                        className="w-full bg-gray-50 text-gray-900 px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-600 text-xs font-bold uppercase mb-1">EPF Number *</label>
+                      <input value={userForm.epf_number} onChange={e => setUserForm(p => ({ ...p, epf_number: e.target.value }))} placeholder="EPF Number"
                         className="w-full bg-gray-50 text-gray-900 px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-purple-500" />
                     </div>
                     <div>

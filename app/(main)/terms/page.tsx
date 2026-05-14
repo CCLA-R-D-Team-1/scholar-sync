@@ -12,12 +12,12 @@ export default function TermsPage() {
           <div className="space-y-10 text-[#475569] leading-relaxed text-lg">
             <section>
               <h2 className="text-2xl font-bold text-[#0F172A] mb-4">1. Agreement to Terms</h2>
-              <p>By accessing or using CADD Centre Lanka's platform, you agree to be bound by these Terms and Conditions and all applicable laws and regulations.</p>
+              <p>By accessing or using Scholar Sync's platform, you agree to be bound by these Terms and Conditions and all applicable laws and regulations.</p>
             </section>
             
             <section>
               <h2 className="text-2xl font-bold text-[#0F172A] mb-4">2. Use License</h2>
-              <p>Permission is granted to temporarily access the materials (information or software) on CADD Centre Lanka's website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title.</p>
+              <p>Permission is granted to temporarily access the materials (information or software) on Scholar Sync's website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title.</p>
             </section>
             
             <section>
@@ -27,7 +27,7 @@ export default function TermsPage() {
             
             <section>
               <h2 className="text-2xl font-bold text-[#0F172A] mb-4">4. Modifications</h2>
-              <p>CADD Centre Lanka may revise these terms of service for its website at any time without notice. By using this website you are agreeing to be bound by the then current version of these terms of service.</p>
+              <p>Scholar Sync may revise these terms of service for its website at any time without notice. By using this website you are agreeing to be bound by the then current version of these terms of service.</p>
             </section>
           </div>
         </motion.div>

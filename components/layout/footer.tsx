@@ -53,7 +53,7 @@ export function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-sm text-gray-500">
                 <Mail className="h-4 w-4 mt-0.5 text-blue-500 flex-shrink-0" />
-                info@caddcentrelanka.lk
+                info@scholarsync.lk
               </li>
               <li className="flex items-start gap-3 text-sm text-gray-500">
                 <Phone className="h-4 w-4 mt-0.5 text-blue-500 flex-shrink-0" />

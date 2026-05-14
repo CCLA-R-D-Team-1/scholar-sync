@@ -7,14 +7,19 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import type { AuthUser } from "@/lib/auth"
 
 const ROLE_ALLOWED_PATHS: Record<string, string[]> = {
-  marketing_staff:  ['/admin/ims/marketing', '/admin/ims/tasks', '/admin/ims/roster'],
-  academic_staff:   ['/admin/ims/academic',  '/admin/ims/tasks', '/admin/ims/roster'],
+  academic_head:    ['/admin/ims/academic',  '/admin/ims/tasks', '/admin/ims/roster', '/admin/ims/dashboard'],
+  academic_officer: ['/admin/ims/academic',  '/admin/ims/tasks', '/admin/ims/roster'],
+  marketing_head:   ['/admin/ims/marketing', '/admin/ims/tasks', '/admin/ims/roster', '/admin/ims/dashboard'],
+  marketing_officer:['/admin/ims/marketing', '/admin/ims/tasks', '/admin/ims/roster'],
+  finance_head:     ['/admin/ims/finance',   '/admin/ims/tasks', '/admin/ims/roster', '/admin/ims/dashboard'],
   finance_officer:  ['/admin/ims/finance',   '/admin/ims/tasks', '/admin/ims/roster'],
+  hr_head:          ['/admin/ims/hr',        '/admin/ims/tasks', '/admin/ims/roster', '/admin/ims/dashboard'],
   hr_officer:       ['/admin/ims/hr',        '/admin/ims/tasks', '/admin/ims/roster'],
   staff:            ['/admin/ims/tasks',      '/admin/ims/roster', '/admin/ims/dashboard'],
+  lecturer:         ['/admin/ims/academic'],
 }
 
-const FULL_ACCESS = ['admin', 'super_admin', 'branch_manager', 'academic_manager']
+const FULL_ACCESS = ['admin', 'super_admin']
 
 export default function IMSLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)

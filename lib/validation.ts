@@ -1,5 +1,5 @@
-// ─── Input Validation Utilities ─────────────────────────────────
-// Shared validation logic for all forms across CADD Centre Lanka
+﻿// ─── Input Validation Utilities ─────────────────────────────────
+// Shared validation logic for all forms across Scholar-Sync
 
 /** Allow only letters, spaces, dots, and hyphens (no numbers, no symbols) */
 export function isValidName(value: string): boolean {

@@ -19,7 +19,8 @@ const PRIORITY_COLORS = {
 }
 const PRIORITY_DOT = { low: "bg-green-500", medium: "bg-yellow-500", high: "bg-red-500" }
 
-export default function IMSTasksPage({ embedded = false }: { embedded?: boolean } = {}) {
+export default function IMSTasksPage(props: any) {
+  const embedded = props?.embedded || false;
   const [tasks, setTasks] = useState<OpsTask[]>([])
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)

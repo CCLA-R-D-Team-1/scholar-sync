@@ -1,17 +1,18 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import {
   User, Mail, Calendar as CalendarIcon, Crown, Star, Shield, Clock,
   Edit, Save, X, Lock, Key, ImageIcon, Link as LinkIcon, CheckCircle,
-  AlertCircle, FileText, Plus, Building, Briefcase, Trash2, Upload
+  AlertCircle, FileText, Plus, Building, Briefcase, Trash2, Upload,
+  GraduationCap, BookOpen, Layers
 } from "lucide-react"
 
-import type { Profile } from "@/types"
-import { updateProfileRole } from "@/lib/ims-data"
+import type { Profile, HrLeaveRequest } from "@/types"
+import { updateProfileRole, createHrLeaveRequest } from "@/lib/ims-data"
 import { confirmDialog } from "@/components/ui/global-confirm-dialog"
 import { supabase } from "@/lib/supabase"
 
@@ -295,24 +296,77 @@ export default function ProfileSection({ userData, onUpdateProfile }: { userData
   const [showPhotoEditor, setShowPhotoEditor] = useState(false)
   const [showDocEditor, setShowDocEditor] = useState(false)
   const [localUser, setLocalUser] = useState<Profile>(userData)
+  const [showLeaveModal, setShowLeaveModal] = useState(false)
+  const [leaveForm, setLeaveForm] = useState({ type: 'Annual', from_date: '', to_date: '', reason: '' })
+  const [submittingLeave, setSubmittingLeave] = useState(false)
+  const [myLeaves, setMyLeaves] = useState<HrLeaveRequest[]>([])
+  const [loadingLeaves, setLoadingLeaves] = useState(false)
+  const [studentEnrollments, setStudentEnrollments] = useState<any[]>([])
+  const [loadingEnrollments, setLoadingEnrollments] = useState(false)
+
+  const fetchMyLeaves = useCallback(async () => {
+    if (localUser.role === 'student') return
+    setLoadingLeaves(true)
+    try {
+      const { data, error } = await supabase
+        .from('hr_leave_requests')
+        .select('*')
+        .eq('user_id', localUser.id)
+        .order('created_at', { ascending: false })
+      if (!error && data) setMyLeaves(data)
+    } catch {} finally { setLoadingLeaves(false) }
+  }, [localUser.id, localUser.role])
+
+  useEffect(() => { fetchMyLeaves() }, [fetchMyLeaves])
 
   React.useEffect(() => {
     const fetchFullProfile = async () => {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userData.id).single()
-      if (data && !error) {
-        setLocalUser(prev => ({ ...prev, ...data }))
-        setEditedName(data.full_name || "")
+      // Try profiles first (staff)
+      const { data: profileData, error: profileError } = await supabase.from('profiles').select('*').eq('id', userData.id).single()
+      if (profileData && !profileError) {
+        setLocalUser(prev => ({ ...prev, ...profileData }))
+        setEditedName(profileData.full_name || "")
+        return
+      }
+      // Fallback to students table
+      const { data: studentData, error: studentError } = await supabase.from('students').select('*').eq('id', userData.id).single()
+      if (studentData && !studentError) {
+        setLocalUser(prev => ({ ...prev, ...studentData, role: 'student' }))
+        setEditedName(studentData.full_name || "")
       }
     }
     fetchFullProfile()
   }, [userData.id])
+
+  // Fetch enrollments for student profiles
+  useEffect(() => {
+    if (localUser.role !== 'student') return
+    const fetchEnrollments = async () => {
+      setLoadingEnrollments(true)
+      try {
+        const { data, error } = await supabase
+          .from('enrollments')
+          .select('*, courses(title, slug), batches:batch_id(name)')
+          .eq('user_id', localUser.id)
+          .order('created_at', { ascending: false })
+        if (!error && data) setStudentEnrollments(data)
+      } catch {} finally { setLoadingEnrollments(false) }
+    }
+    fetchEnrollments()
+  }, [localUser.id, localUser.role])
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!editedName.trim()) return toast.error("Name cannot be empty")
     setIsLoading(true)
     try {
-      await updateProfileRole(localUser.id, { full_name: editedName.trim() })
+      if (localUser.role === 'student') {
+        // Students → update students table directly
+        await supabase.from('students').update({ full_name: editedName.trim() }).eq('id', localUser.id)
+      } else {
+        // Staff → update profiles table
+        await updateProfileRole(localUser.id, { full_name: editedName.trim() })
+      }
       toast.success("Profile updated successfully!")
       setIsEditing(false)
       setLocalUser(prev => ({ ...prev, full_name: editedName.trim() }))
@@ -342,7 +396,7 @@ export default function ProfileSection({ userData, onUpdateProfile }: { userData
   const ROLE_LABELS: Record<string, string> = {
     admin:            "Administrator",
     academic_manager: "Academic Manager",
-    trainer:          "Trainer",
+    lecturer:          "Lecturer",
     student:          "Student",
     coordinator:      "Coordinator",
   }
@@ -391,6 +445,14 @@ export default function ProfileSection({ userData, onUpdateProfile }: { userData
                 </div>
               )}
             </div>
+
+            {/* Student ID Badge */}
+            {localUser.role === 'student' && (localUser as any).student_id && (
+              <div className="bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-200 rounded-xl px-4 py-3 flex flex-col items-center gap-1 mt-3">
+                <span className="text-[9px] text-blue-500 font-black uppercase tracking-widest">Student ID</span>
+                <span className="text-lg font-black text-blue-800 font-mono tracking-wider">{(localUser as any).student_id}</span>
+              </div>
+            )}
           </div>
 
           {/* Account Details Card */}
@@ -407,10 +469,17 @@ export default function ProfileSection({ userData, onUpdateProfile }: { userData
               <div><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Last Active</p><p className="text-sm font-bold text-gray-900">{localUser.last_active ? format(new Date(localUser.last_active), 'MMM d, yyyy') : 'Recently'}</p></div>
             </div>
             
-            {localUser.access_level !== undefined && (
+              {localUser.access_level !== undefined && (
               <div className="flex items-center gap-4 px-3 py-2">
                 <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600"><Key className="w-5 h-5" /></div>
                 <div><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Access Level</p><p className="text-sm font-bold text-gray-900">Level {localUser.access_level}</p></div>
+              </div>
+            )}
+
+            {(localUser as any).epf_number && (
+              <div className="flex items-center gap-4 px-3 py-2">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600"><Briefcase className="w-5 h-5" /></div>
+                <div><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">EPF Number</p><p className="text-sm font-bold text-gray-900 font-mono">{(localUser as any).epf_number}</p></div>
               </div>
             )}
           </div>
@@ -456,7 +525,138 @@ export default function ProfileSection({ userData, onUpdateProfile }: { userData
             </form>
           </div>
 
-          {/* Conditional Sections based on Role */}
+          {/* STUDENT-SPECIFIC SECTIONS */}
+          {localUser.role === 'student' && (
+            <>
+              {/* Academic Credentials Card */}
+              <div className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-sm">
+                <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-3">
+                  <div className="w-1.5 h-6 bg-purple-500 rounded-full" />
+                  Academic Credentials
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Academic Email */}
+                  <div className="bg-purple-50 border border-purple-200 rounded-2xl p-5 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                        <Mail className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <span className="text-[10px] text-purple-500 font-black uppercase tracking-widest">Academic Email</span>
+                    </div>
+                    <p className="font-mono font-bold text-purple-900 text-sm pl-10">
+                      {(localUser as any).academic_email || localUser.email || '—'}
+                    </p>
+                  </div>
+
+                  {/* Default Password */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <Lock className="w-4 h-4 text-amber-600" />
+                      </div>
+                      <span className="text-[10px] text-amber-500 font-black uppercase tracking-widest">Default Password</span>
+                    </div>
+                    <p className="font-mono font-bold text-amber-900 text-sm pl-10">
+                      {(localUser as any).academic_password || '—'}
+                    </p>
+                  </div>
+
+                  {/* Personal Email */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                        <Mail className="w-4 h-4 text-gray-500" />
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Personal Email</span>
+                    </div>
+                    <p className="font-medium text-gray-700 text-sm pl-10">
+                      {(localUser as any).personal_email || '—'}
+                    </p>
+                  </div>
+
+                  {/* Phone */}
+                  {localUser.phone && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                          <User className="w-4 h-4 text-gray-500" />
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Phone</span>
+                      </div>
+                      <p className="font-medium text-gray-700 text-sm pl-10">{localUser.phone}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Enrolled Courses & Batch */}
+              <div className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-sm">
+                <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-3">
+                  <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+                  Enrolled Courses & Batches
+                </h3>
+
+                {loadingEnrollments ? (
+                  <div className="text-center py-8">
+                    <div className="w-8 h-8 border-2 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-2" />
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Loading enrollments...</p>
+                  </div>
+                ) : studentEnrollments.length === 0 ? (
+                  <div className="text-center py-10 bg-gray-50 rounded-[2rem] border border-dashed border-gray-200">
+                    <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                      <BookOpen className="w-7 h-7 text-gray-300" />
+                    </div>
+                    <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No enrollments found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {studentEnrollments.map((enrollment: any) => (
+                      <div key={enrollment.id}
+                        className="bg-gray-50 border border-gray-100 rounded-2xl p-5 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-md">
+                              <GraduationCap className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-900 text-sm">{enrollment.courses?.title || 'Unknown Course'}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                {enrollment.batches?.name && (
+                                  <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-bold uppercase flex items-center gap-1">
+                                    <Layers className="w-3 h-3" /> {enrollment.batches.name}
+                                  </span>
+                                )}
+                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-black uppercase ${
+                                  enrollment.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                  enrollment.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {enrollment.status}
+                                </span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase ${
+                                  enrollment.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {enrollment.payment_status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] text-gray-400 font-bold uppercase">Enrolled</p>
+                            <p className="text-xs font-bold text-gray-700">
+                              {enrollment.created_at ? format(new Date(enrollment.created_at), 'MMM d, yyyy') : '—'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Conditional Staff Sections */}
           {localUser.role !== 'student' && (
             <>
               {/* Office Assets */}
@@ -539,6 +739,8 @@ export default function ProfileSection({ userData, onUpdateProfile }: { userData
               </div>
             </>
           )}
+
+          {/* Removed Leave Request Section -> Moved to LeaveRequestsView.tsx */}
 
         </motion.div>
       </div>

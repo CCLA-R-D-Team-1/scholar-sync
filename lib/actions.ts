@@ -1,4 +1,4 @@
-﻿/**
+/**
  * lib/actions.ts
  * Server Actions - CADD ASMS
  */
@@ -99,8 +99,16 @@ export async function getFullProfileAction() {
   if (!user) return null
 
   const supabase = await createServerSupabaseClient()
-  const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-  return data
+
+  // Try profiles first (staff members)
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+  if (profile) return { ...profile, _source: 'profiles' }
+
+  // Fallback to students table
+  const { data: student } = await supabase.from('students').select('*').eq('id', user.id).single()
+  if (student) return { ...student, role: 'student', _source: 'students' }
+
+  return null
 }
 
 // ── STUDENT ATTENDANCE ────────────────────────────────────────────────────────

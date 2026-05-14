@@ -43,18 +43,19 @@ export const PERMISSION_DEFS: PermissionDef[] = [
 
 // Base permissions each role automatically has (no need to grant them)
 export const ROLE_BASE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  admin:            [],
-  super_admin:      [],
-  branch_manager:   [],
-  academic_manager: ['asms_full'],
-  trainer:          [],
-  coordinator:      [],
-  student:          [],
-  marketing_staff:  ['ims_marketing','ims_tasks','ims_roster'],
-  academic_staff:   ['ims_academic','ims_tasks','ims_roster'],
+  super_admin:      ['ims_overview','ims_marketing','ims_academic','ims_finance','ims_hr','ims_users','ims_tasks','ims_roster','ims_control_panel','asms_full','task_delete'],
+  admin:            ['ims_overview','ims_marketing','ims_academic','ims_finance','ims_hr','ims_users','ims_tasks','ims_roster','ims_control_panel','asms_full','task_delete'],
+  academic_head:    ['ims_academic','ims_tasks','ims_roster','ims_overview'],
+  academic_officer: ['ims_academic','ims_tasks','ims_roster'],
+  marketing_head:   ['ims_marketing','ims_tasks','ims_roster','ims_overview'],
+  marketing_officer:['ims_marketing','ims_tasks','ims_roster'],
+  finance_head:     ['ims_finance','ims_tasks','ims_roster','ims_overview'],
   finance_officer:  ['ims_finance','ims_tasks','ims_roster'],
+  hr_head:          ['ims_hr','ims_tasks','ims_roster','ims_overview'],
   hr_officer:       ['ims_hr','ims_tasks','ims_roster'],
   staff:            ['ims_tasks','ims_roster'],
+  lecturer:         ['ims_academic'],
+  student:          [],
 }
 
 /**

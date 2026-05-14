@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Sparkles, BookOpen, GraduationCap, Award } from "lucide-react"
-import { signIn, getCurrentUser } from "@/lib/auth"
+import { signIn, getCurrentUser, isIMSRole } from "@/lib/auth"
 
 const features = [
   { icon: GraduationCap, text: "World-class CAD Education" },
@@ -32,7 +32,8 @@ export default function LoginPage() {
   useEffect(() => {
     getCurrentUser().then((user) => {
       if (user) {
-        router.replace(user.role === "admin" ? "/admin" : "/dashboard")
+        const isStaff = user.role === 'admin' || isIMSRole(user.role)
+        router.replace(isStaff ? "/admin" : "/dashboard")
       } else {
         setIsCheckingSession(false)
       }
@@ -51,7 +52,8 @@ export default function LoginPage() {
       return
     }
     const redirect = getParam("redirect")
-    const destination = redirect || (user.role === "admin" ? "/admin" : "/dashboard")
+    const isStaff = user.role === 'admin' || isIMSRole(user.role)
+    const destination = redirect || (isStaff ? "/admin" : "/dashboard")
     router.replace(destination)
   }
 

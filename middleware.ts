@@ -9,23 +9,37 @@ import type { UserRole } from '@/types'
 const PROTECTED_ROUTES = ['/dashboard', '/profile', '/my-courses', '/my-attendance', '/my-results', '/my-progress', '/my-certificates', '/resources']
 const ADMIN_ROUTES = ['/admin']
 
-// All roles that can access /admin (ASMS + IMS)
+// All roles that can access /admin (staff + lecturer)
 const ADMIN_CAPABLE_ROLES = [
-  'admin', 'super_admin', 'branch_manager',
-  'marketing_staff', 'academic_staff', 'finance_officer', 'hr_officer', 'staff',
-  'academic_manager', 'trainer', 'coordinator',
+  'admin', 'super_admin',
+  'academic_head', 'academic_officer',
+  'finance_head', 'finance_officer',
+  'marketing_head', 'marketing_officer',
+  'hr_head', 'hr_officer',
+  'staff', 'lecturer',
 ]
 
 // IMS-only roles: if they visit /admin top-level, redirect to their section
-const IMS_ONLY_ROLES = ['marketing_staff', 'academic_staff', 'finance_officer', 'hr_officer', 'staff']
+const IMS_ONLY_ROLES = [
+  'academic_head', 'academic_officer',
+  'finance_head', 'finance_officer',
+  'marketing_head', 'marketing_officer',
+  'hr_head', 'hr_officer',
+  'staff', 'lecturer',
+]
 
 // Default redirect for IMS-only roles
 const IMS_REDIRECT: Record<string, string> = {
-  marketing_staff: '/admin/ims/marketing',
-  academic_staff:  '/admin/ims/academic',
-  finance_officer: '/admin/ims/finance',
-  hr_officer:      '/admin/ims/hr',
-  staff:           '/admin/ims/tasks',
+  academic_head:    '/admin/ims/academic',
+  academic_officer: '/admin/ims/academic',
+  marketing_head:   '/admin/ims/marketing',
+  marketing_officer:'/admin/ims/marketing',
+  finance_head:     '/admin/ims/finance',
+  finance_officer:  '/admin/ims/finance',
+  hr_head:          '/admin/ims/hr',
+  hr_officer:       '/admin/ims/hr',
+  staff:            '/admin/ims/tasks',
+  lecturer:         '/admin/ims/academic',
 }
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions }
@@ -87,7 +101,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Full admins always pass through
-    const isFullAdmin = ['admin', 'super_admin', 'branch_manager'].includes(role)
+    const isFullAdmin = ['admin', 'super_admin'].includes(role)
     if (isFullAdmin) return response
 
     // For non-full-admin roles, check the specific path permission

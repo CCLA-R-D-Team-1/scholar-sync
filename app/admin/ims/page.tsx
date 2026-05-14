@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { QuickGuide, type GuideStep } from "@/components/ui/quick-guide"
 
-import { getIMSDashboardStats } from "@/lib/ims-data"
+import { getIMSDashboardStats, getLeadConfirmations } from "@/lib/ims-data"
 import { getCurrentUser, signOut } from "@/lib/auth"
 import type { IMSDashboardStats, AuthUser } from "@/types"
 
@@ -22,10 +22,20 @@ export default function IMSDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showLoadingAnimation, setShowLoadingAnimation] = useState(true)
+  const [pipelineCounts, setPipelineCounts] = useState({ marketing: 0, finance: 0, academic: 0 })
 
   useEffect(() => {
-    Promise.all([getIMSDashboardStats(), getCurrentUser()])
-      .then(([s, u]) => { setStats(s); setUser(u as any) })
+    Promise.all([
+      getIMSDashboardStats(),
+      getCurrentUser(),
+      getLeadConfirmations('marketing_confirmed'),
+      getLeadConfirmations('finance_confirmed'),
+      getLeadConfirmations('academic_confirmed'),
+    ])
+      .then(([s, u, mc, fc, ac]) => {
+        setStats(s); setUser(u as any);
+        setPipelineCounts({ marketing: mc.length, finance: fc.length, academic: ac.length })
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -205,6 +215,78 @@ export default function IMSDashboardPage() {
               </motion.div>
             ))}
           </div>
+        )}
+
+        {/* Enrollment Pipeline Status */}
+        {(pipelineCounts.marketing > 0 || pipelineCounts.finance > 0 || pipelineCounts.academic > 0) && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <ArrowRight className="w-5 h-5 text-blue-600" /> Enrollment Pipeline
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link href="/admin/ims/finance?tab=lead-confirmations">
+                <div className={`relative p-5 rounded-2xl border-2 transition-all hover:shadow-lg cursor-pointer ${
+                  pipelineCounts.marketing > 0 ? 'border-amber-300 bg-amber-50 hover:border-amber-400' : 'border-gray-100 bg-gray-50'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center">
+                      <Megaphone className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Awaiting Finance</p>
+                      <p className="text-2xl font-black text-gray-900">{pipelineCounts.marketing}</p>
+                    </div>
+                  </div>
+                  {pipelineCounts.marketing > 0 && (
+                    <p className="text-xs text-amber-700 font-medium bg-amber-100 px-2 py-1 rounded-lg inline-block">
+                      Marketing confirmed → needs payment verification
+                    </p>
+                  )}
+                </div>
+              </Link>
+
+              <Link href="/admin/ims/academic?tab=lead-confirmations">
+                <div className={`relative p-5 rounded-2xl border-2 transition-all hover:shadow-lg cursor-pointer ${
+                  pipelineCounts.finance > 0 ? 'border-blue-300 bg-blue-50 hover:border-blue-400' : 'border-gray-100 bg-gray-50'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                      <DollarSign className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Awaiting Academic</p>
+                      <p className="text-2xl font-black text-gray-900">{pipelineCounts.finance}</p>
+                    </div>
+                  </div>
+                  {pipelineCounts.finance > 0 && (
+                    <p className="text-xs text-blue-700 font-medium bg-blue-100 px-2 py-1 rounded-lg inline-block">
+                      Finance verified → needs batch allocation
+                    </p>
+                  )}
+                </div>
+              </Link>
+
+              <div className={`relative p-5 rounded-2xl border-2 transition-all ${
+                pipelineCounts.academic > 0 ? 'border-emerald-300 bg-emerald-50' : 'border-gray-100 bg-gray-50'
+              }`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
+                    <GraduationCap className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Enrolled</p>
+                    <p className="text-2xl font-black text-gray-900">{pipelineCounts.academic}</p>
+                  </div>
+                </div>
+                {pipelineCounts.academic > 0 && (
+                  <p className="text-xs text-emerald-700 font-medium bg-emerald-100 px-2 py-1 rounded-lg inline-block">
+                    ✓ Successfully enrolled this period
+                  </p>
+                )}
+              </div>
+            </div>
+          </motion.div>
         )}
 
         {/* Modules Grid */}

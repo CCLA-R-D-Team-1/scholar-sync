@@ -63,7 +63,7 @@ export function Navbar() {
     router.push("/")
   }
 
-  const NON_STUDENT_ROLES = ["admin","super_admin","branch_manager","academic_manager","coordinator","trainer","marketing_staff","academic_staff","finance_officer","hr_officer","staff"]
+  const NON_STUDENT_ROLES = ["admin","super_admin","academic_head","academic_officer","finance_head","finance_officer","marketing_head","marketing_officer","hr_head","hr_officer","staff","lecturer"]
   const isAdminUser = user && NON_STUDENT_ROLES.includes(user.role)
   const adminRoute = user ? getDefaultRoute(user.role) : "/admin"
 
@@ -193,7 +193,7 @@ export function Navbar() {
               {user ? (
                 <>
                   <Link href="/dashboard" className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50" onClick={() => setIsOpen(false)}>My Portal</Link>
-                  {isAdminUser && <Link href="/admin" className="block px-3 py-2 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-50" onClick={() => setIsOpen(false)}>Admin Panel</Link>}
+                  {isAdminUser && <Link href={adminRoute} className="block px-3 py-2 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-50" onClick={() => setIsOpen(false)}>Admin Panel</Link>}
                   <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50">Sign Out</button>
                 </>
               ) : (

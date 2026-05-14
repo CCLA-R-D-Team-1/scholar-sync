@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -169,8 +169,8 @@ export default function ReportsPage() {
                 <tbody>
                   {enrollments.map((e: any) => (
                     <tr key={e.id} className="border-b">
-                      <td className="py-3 px-4">{e.profiles?.full_name || "-"}</td>
-                      <td className="py-3 px-4 text-xs text-blue-700">{e.profiles?.student_id || "-"}</td>
+                      <td className="py-3 px-4">{e.students?.full_name || "-"}</td>
+                      <td className="py-3 px-4 text-xs text-blue-700">{e.students?.student_id || "-"}</td>
                       <td className="py-3 px-4">{e.courses?.title || "-"}</td>
                       <td className="py-3 px-4">{e.batches?.name || "-"}</td>
                       <td className="py-3 px-4">{formatCurrency(e.amount_paid || 0)}</td>
